@@ -82,7 +82,7 @@ explainkit tts <dir> --engine kokoro|command [--voice af_heart] [--cmd "..."]
 explainkit doctor
 ```
 
-`project.json`: `script`, `audio`, `words`, `plan`, `scenes` (list of files), `fixes` (rewrite how a word is captioned: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `captions`, `pulse`, `reframes`, `labelY`, `captionY`, `tail`, `language` (`en`, `es`), `wordsPerSecond`.
+`project.json`: `script`, `audio`, `words`, `plan`, `scenes` (list of files), `fixes` (rewrite how a word is captioned: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `captions`, `pulse`, `reframes`, `labelY`, `captionY`, `tail`, `language` (`en`, `es`, `fr`; sets the words a caption never ends on, and `es` also writes 1,000 as 1.000), `wordsPerSecond`.
 
 ## What it will not do
 
