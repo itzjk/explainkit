@@ -56,6 +56,12 @@ test('captions: 1-3 words, never end on a function word, cut at punctuation', ()
   assert.ok(!caps.some(c => /MAT/.test(c.txt) && /THEN/.test(c.txt)), 'no caption spans the comma');
 });
 
+test('captions: French function words never end a caption', () => {
+  const words = 'Il parle de la mer avec le vent et les oiseaux.'.split(' ').map((t, i) => ({ txt: t, s: i * .3, e: i * .3 + .25 }));
+  const caps = captions(words, { fixes: [], language: 'fr' });
+  assert.ok(!caps.slice(0, -1).some(c => /\b(DE|LA|LE|LES|AVEC|ET|IL)$/.test(c.txt)), JSON.stringify(caps.map(c => c.txt)));
+});
+
 test('captions: fixes rewrite a word, wholeWord only matches whole words, times limits uses', () => {
   const words = ['Cat', 'catalog', 'cat'].map((t, i) => ({ txt: t, s: i, e: i + .5 }));
   const caps = captions(words, { fixes: [{ from: 'cat', to: 'dog', wholeWord: true, times: 1 }], language: 'en' });
