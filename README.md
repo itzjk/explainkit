@@ -1,5 +1,7 @@
 # explainkit
 
+[English](README.md) | [Español](README.es.md)
+
 **Turn a script and a narration into a vertical 2D explainer video (1080x1920, 30 fps) with shots, word-by-word captions and a mixed soundtrack. Everything runs on your machine. MIT licensed.**
 
 ![A steel boat flips over, then a keel brings it back upright](docs/boat.gif) ![A lighthouse keeper at a door, the knocking starts](docs/lighthouse.gif) ![A ship trapped in the ice, silhouettes](docs/endurance.gif)
