@@ -6,7 +6,7 @@
 //            the model (about 90 MB) is downloaded from Hugging Face the first time you use it.
 //              npm install kokoro-js && explainkit tts examples/boat --engine kokoro --voice af_heart
 // Check the license of the voice you choose before you publish what it says.
-import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, rmSync, existsSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { run, ffmpeg } from './util.mjs';
@@ -17,6 +17,15 @@ export function sentences(text) {
     .map(p => p.split(/(?<=[.!?])\s+/).filter(Boolean));
 }
 
+// runs a command line with {in}, {out} and {text} filled in; a command that exits 0 without writing {out} is an error too
+function runCommand({ cmd, text, out, tmp }) {
+  const input = path.join(tmp, 'in.txt'); writeFileSync(input, text);
+  const line = cmd.replaceAll('{in}', `"${input}"`).replaceAll('{out}', `"${out}"`).replaceAll('{text}', JSON.stringify(text));
+  const r = run(line, [], { shell: true, stdio: ['ignore', 'inherit', 'inherit'] });
+  if (r.status !== 0) throw new Error(`the TTS command failed (exit ${r.status ?? r.signal}): ${line.slice(0, 120)}`);
+  if (!existsSync(out) || statSync(out).size === 0) throw new Error(`the TTS command finished but wrote no audio to ${out}. It has to write its audio to {out}: ${line.slice(0, 120)}`);
+}
+
 export async function narrate({ scriptFile, out, engine = 'kokoro', voice = 'af_heart', cmd = null }) {
   const text = scriptText(readFileSync(scriptFile, 'utf8'));
   if (!text) throw new Error('the script is empty');
@@ -25,10 +34,7 @@ export async function narrate({ scriptFile, out, engine = 'kokoro', voice = 'af_
   try {
     if (engine === 'command') {
       if (!cmd) throw new Error('--engine command needs --cmd "<program> {in} {out}"');
-      const input = path.join(tmp, 'in.txt'); writeFileSync(input, text);
-      const line = cmd.replaceAll('{in}', `"${input}"`).replaceAll('{out}', `"${out}"`).replaceAll('{text}', JSON.stringify(text));
-      const r = run(line, [], { shell: true, stdio: ['ignore', 'inherit', 'inherit'] });
-      if (r.status !== 0) throw new Error(`the TTS command failed (exit ${r.status}): ${line.slice(0, 120)}`);
+      runCommand({ cmd, text, out, tmp });
       return out;
     }
     if (engine === 'kokoro') {

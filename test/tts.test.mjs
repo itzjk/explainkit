@@ -32,3 +32,15 @@ test('command engine without --cmd and unknown engines explain what to do', asyn
   await assert.rejects(() => narrate({ scriptFile: script, out: path.join(dir, 'o.wav'), engine: 'command' }), /needs --cmd/);
   await assert.rejects(() => narrate({ scriptFile: script, out: path.join(dir, 'o.wav'), engine: 'nope' }), /unknown TTS engine/);
 });
+
+test('a command that exits 0 without writing the audio file is an error, not a success', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ek-')), script = path.join(dir, 's.txt'); writeFileSync(script, 'Hi.');
+  const out = path.join(dir, 'voice.wav');
+  await assert.rejects(() => narrate({ scriptFile: script, out, engine: 'command', cmd: 'node -e "0"' }), /finished but wrote no audio to .*voice\.wav.*{out}/);
+  await assert.rejects(() => narrate({ scriptFile: script, out, engine: 'command', cmd: `node -e "require('fs').writeFileSync(process.argv[1], '')" {out}` }), /wrote no audio/);
+});
+
+test('a command killed by a signal is reported with the signal, not with "exit null"', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ek-')), script = path.join(dir, 's.txt'); writeFileSync(script, 'Hi.');
+  await assert.rejects(() => narrate({ scriptFile: script, out: path.join(dir, 'o.wav'), engine: 'command', cmd: `node -e "process.kill(process.pid, 'SIGKILL')"` }), e => /TTS command failed \(exit \w+\)/.test(e.message) && !/exit null/.test(e.message));
+});
