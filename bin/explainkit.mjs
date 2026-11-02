@@ -8,7 +8,7 @@ import { estimateWords, whisperWords, writeWords, scriptText } from '../src/alig
 import { mix } from '../src/mix.mjs';
 import { narrate } from '../src/tts.mjs';
 import { stills, sheet, video, gif } from '../src/render.mjs';
-import { have, run } from '../src/util.mjs';
+import { have, run, findOnPath } from '../src/util.mjs';
 import { whisperDoctor } from '../src/whisper-model.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -23,6 +23,7 @@ const HELP = `explainkit: script + narration -> vertical 2D explainer video (108
   explainkit align <dir> [--engine estimate|whisper] [--model ggml.bin]   write out/words.json
   explainkit mix <dir>                      write out/audio-final.m4a
   explainkit tts <dir> --engine kokoro|command [--voice af_heart] [--cmd "..."]   make narration.wav from the script
+  explainkit tts <dir> --engine piper --voice voice.onnx [--piper-bin piper] [--piper-config voice.onnx.json]
   explainkit doctor                         check ffmpeg, Chromium, fonts, and the whisper model if you use it
 
 Common options: --audio <file> uses that narration instead of project.json's "audio".
@@ -30,7 +31,7 @@ Docs: README.md`;
 
 const { values: v, positionals: pos } = parseArgs({ allowPositionals: true, options: {
   audio: { type: 'string' }, at: { type: 'string' }, every: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' },
-  engine: { type: 'string' }, model: { type: 'string' }, voice: { type: 'string' }, cmd: { type: 'string' }, width: { type: 'string' },
+  engine: { type: 'string' }, model: { type: 'string' }, voice: { type: 'string' }, cmd: { type: 'string' }, 'piper-bin': { type: 'string' }, 'piper-config': { type: 'string' }, width: { type: 'string' },
   fps: { type: 'string' }, out: { type: 'string' }, help: { type: 'boolean', short: 'h' } } });
 const [command, arg] = pos;
 const dirOf = () => { if (!arg) fail(`usage: explainkit ${command} <project-folder>`); return path.resolve(arg); };
@@ -63,6 +64,7 @@ function doctor() {
   ok(have('ffprobe'), 'ffprobe on PATH', 'it ships with ffmpeg');
   for (const f of ['barlow-condensed-latin-700-normal.woff2', 'barlow-latin-400-normal.woff2', 'jetbrains-mono-latin-400-normal.woff2']) ok(existsSync(path.join(ROOT, 'fonts', f)), `font ${f}`, 'fonts/ folder is incomplete');
   const w = whisperDoctor(); w.lines.forEach(l => console.log(l)); if (w.failed) bad++;
+  const pp = findOnPath('piper'); console.log(pp ? `ok   piper: ${pp}` : 'info piper: not found (optional: only --engine piper needs it; the error from tts says what to download)');
   return import('playwright').then(async ({ chromium }) => {
     try { const b = await chromium.launch(); await b.close(); ok(true, 'Chromium launches'); }
     catch { ok(false, 'Chromium launches', 'npx playwright install chromium'); }
@@ -96,7 +98,7 @@ async function main() {
     }
     case 'tts': {
       const c = cfg(); const o = path.resolve(v.out || (c.audio ? path.resolve(dir, c.audio) : path.join(dir, 'narration.wav')));
-      await narrate({ scriptFile: c.scriptFile, out: o, engine: v.engine || 'kokoro', voice: v.voice || 'af_heart', cmd: v.cmd });
+      await narrate({ scriptFile: c.scriptFile, out: o, engine: v.engine || 'kokoro', voice: v.voice, cmd: v.cmd, piperBin: v['piper-bin'], piperConfig: v['piper-config'] });
       return console.log(`narration -> ${o}`);
     }
     case 'frames': {
