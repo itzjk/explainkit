@@ -9,8 +9,8 @@
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { run, ffmpeg, duration, norm } from './util.mjs';
-import { findWhisperModel, findOnPath, modelHelp, cliHelp, modelUrl, RECOMMENDED } from './whisper-model.mjs';
+import { run, ffmpeg, duration, norm, findOnPath } from './util.mjs';
+import { findWhisperModel, modelHelp, cliHelp, modelUrl, RECOMMENDED } from './whisper-model.mjs';
 
 export const DEFAULT_WPS = 2.6; // words per second of a calm narrator, used when there is no audio to measure
 

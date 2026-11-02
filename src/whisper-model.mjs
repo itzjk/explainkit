@@ -1,9 +1,9 @@
 // Where the whisper.cpp model for `--engine whisper` comes from, and how to tell a good file from a bad one.
 // explainkit never downloads the model: this module only looks at files you put on disk.
-import { statSync, openSync, readSync, closeSync, readdirSync, accessSync, constants } from 'node:fs';
+import { statSync, openSync, readSync, closeSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import { shellQuote } from './util.mjs';
+import { shellQuote, findOnPath } from './util.mjs';
 
 export const MODEL_REPO = 'https://huggingface.co/ggerganov/whisper.cpp';
 // the model the README examples use: any language, 141 MiB
@@ -16,17 +16,6 @@ export const expandHome = (p, home = homedir()) => p.replace(/^~(?=$|[\\/])/, ho
 const GGML_MAGIC = 0x67676d6c;
 const HEADER_BYTES = 48;
 const MULTILINGUAL_VOCAB = 51865;
-
-export function findOnPath(cmd, { env = process.env, platform = process.platform } = {}) {
-  const win = platform === 'win32';
-  const dirs = (env.PATH ?? env.Path ?? '').split(win ? ';' : ':').filter(Boolean);
-  const exts = win ? ['', ...(env.PATHEXT || '.EXE;.CMD;.BAT;.COM').toLowerCase().split(';')] : [''];
-  for (const dir of dirs) for (const ext of exts) {
-    const file = path.join(dir, cmd + ext);
-    try { if (!statSync(file).isFile()) continue; if (!win) accessSync(file, constants.X_OK); return file; } catch { /* next candidate */ }
-  }
-  return null;
-}
 
 export function inspectModel(file) {
   let st;

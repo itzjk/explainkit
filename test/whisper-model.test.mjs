@@ -4,7 +4,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, chmodSync } from '
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectModel, findWhisperModel, findOnPath, modelsFolder, expandHome, modelHelp, cliHelp, whisperDoctor, modelUrl, RECOMMENDED } from '../src/whisper-model.mjs';
+import { findOnPath } from '../src/util.mjs';
+import { inspectModel, findWhisperModel, modelsFolder, expandHome, modelHelp, cliHelp, whisperDoctor, modelUrl, RECOMMENDED } from '../src/whisper-model.mjs';
 
 const tmp = () => mkdtempSync(path.join(tmpdir(), 'ek model-'));
 const header = (vocab = 51865) => { const b = Buffer.alloc(64); b.writeUInt32LE(0x67676d6c, 0); b.writeInt32LE(vocab, 4); return b; };
