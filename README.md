@@ -97,6 +97,7 @@ explainkit build <dir> [--audio file]     timings + mix + render -> <dir>/out/vi
 explainkit frames <dir> --at 3,40,95      stills at those seconds
 explainkit sheet <dir> [--every 6]        contact sheet of the whole video
 explainkit gif <dir> --from 2 --to 8      animated GIF of a section
+explainkit srt <dir>                      the captions as files: <dir>/out/captions.srt and captions.vtt
 explainkit render <dir> [--from --to]     render (or a section) from what is in out/
 explainkit align <dir> [--engine estimate|whisper] [--model ggml.bin]
 explainkit mix <dir>
@@ -105,6 +106,22 @@ explainkit doctor
 ```
 
 `project.json`: `script`, `audio`, `words`, `plan`, `scenes` (list of files), `fixes` (rewrite how a word is captioned: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `captions`, `pulse`, `reframes`, `labelY`, `captionY`, `tail`, `language` (`en`, `es`), `wordsPerSecond`.
+
+## Caption files (.srt and .vtt)
+
+The captions are drawn into the video, and `explainkit srt` writes the same captions as files you can open in an editor or upload next to the video:
+
+```bash
+npx explainkit srt my-video     # my-video/out/captions.srt and my-video/out/captions.vtt
+```
+
+Nothing is rendered, so it runs in a moment and does not need Chromium. It reads the caption list the renderer draws, so the text and the times are the ones in the video: one to three words per cue, in capitals, with your `fixes` applied. It also works with `"captions": false` in `project.json`, for a video that has no burned-in captions.
+
+- **Timings** come from `out/words.json` (written by `build` or `align`). Without that file they are estimated from the script, or spread over the narration when there is audio, and the command tells you so. For exact times run `explainkit align my-video --engine whisper --model ggml-base.bin` first, then `srt`.
+- **SubRip (`.srt`)**: numbered cues like `00:01:02,500 --> 00:01:04,000`, a blank line after each. SubRip has no way to escape text, and some players read `<b>`, `<i>`, `<u>` and `<font>` in it as formatting.
+- **WebVTT (`.vtt`)**: a `WEBVTT` line, then the same cues with a dot before the milliseconds (`00:01:02.500`). `&`, `<` and `>` are escaped, so this is the safer file when your text can contain them.
+- Both files are UTF-8 without a byte order mark, with LF line ends. A caption with no text or no length on screen is left out, and the numbers stay continuous.
+- They cover the whole video. A clip made with `render --from --to` has its own timeline, so shift the times before you use the files with a clip.
 
 ## What it will not do
 

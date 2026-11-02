@@ -29,6 +29,7 @@ npm test        # unit tests + renders every example (about 1-2 minutes)
 | `src/mix.mjs`, `src/synth.mjs` | soundtrack |
 | `src/render.mjs` | Chromium + ffmpeg |
 | `src/tts.mjs` | optional narration adapters |
+| `src/subtitles.mjs` | the caption list as `.srt` and `.vtt` files |
 | `examples/` | one complete project per format |
 
 ## Adding a scene to the built-in library
