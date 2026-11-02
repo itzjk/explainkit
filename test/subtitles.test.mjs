@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepare } from '../src/project.mjs';
-import { timestamp, cues, toSrt, toVtt } from '../src/subtitles.mjs';
+import { timestamp, cues, toSrt, toVtt, writeCaptionFiles } from '../src/subtitles.mjs';
 
 const EXAMPLES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'examples');
 const file = (...rows) => rows.join('\n') + '\n';
@@ -236,6 +236,42 @@ test('a known project: words.json -> shots and captions -> the exact SubRip and 
     '3', '00:00:01.750 --> 00:00:02.900', 'HARBOR', '',
     '4', '00:00:03.000 --> 00:00:03.950', 'NOBODY NOTICED', '',
     '5', '00:00:03.950 --> 00:00:05.200', 'THE LAMP', ''));
+});
+
+test('writeCaptionFiles: makes the folder, writes captions.srt and captions.vtt, and says how many cues each holds', () => {
+  const out = path.join(mkdtempSync(path.join(tmpdir(), 'ek files-')), 'not', 'there yet');
+  const caps = [{ s: 0, e: 1, txt: 'ONE' }, { s: 1, e: 1, txt: 'NO LENGTH' }, { s: 2, e: 3, txt: 'THREE' }];
+  const r = writeCaptionFiles(caps, out);
+  assert.deepEqual(r, { srt: path.join(out, 'captions.srt'), vtt: path.join(out, 'captions.vtt'), count: 2, skipped: 1 });
+  assert.equal(readFileSync(r.srt, 'utf8'), toSrt(caps));
+  assert.equal(readFileSync(r.vtt, 'utf8'), toVtt(caps));
+  assert.deepEqual(readdirSync(out).sort(), ['captions.srt', 'captions.vtt']);
+});
+
+test('writeCaptionFiles: UTF-8 on disk, no byte order mark, LF line breaks', () => {
+  const out = mkdtempSync(path.join(tmpdir(), 'ek-'));
+  const r = writeCaptionFiles([{ s: 0, e: 1, txt: '¿QUÉ PASÓ?\n日本語 🚀' }], out);
+  const srt = readFileSync(r.srt), vtt = readFileSync(r.vtt);
+  assert.deepEqual([...srt.subarray(0, 3)], [0x31, 0x0a, 0x30], 'a SubRip file starts with the cue number');
+  assert.equal(vtt.subarray(0, 6).toString('latin1'), 'WEBVTT');
+  assert.ok(srt.includes(Buffer.from('¿QUÉ PASÓ?\n日本語 🚀', 'utf8')), 'the text is not UTF-8 on disk');
+  assert.ok(vtt.includes(Buffer.from('¿QUÉ PASÓ?\n日本語 🚀', 'utf8')));
+  assert.ok(!srt.includes(0x0d) && !vtt.includes(0x0d), 'a carriage return would double the line breaks in some readers');
+});
+
+test('writeCaptionFiles: a second run replaces the files instead of adding to them', () => {
+  const out = mkdtempSync(path.join(tmpdir(), 'ek-'));
+  writeCaptionFiles([{ s: 0, e: 1, txt: 'FIRST RUN' }, { s: 1, e: 2, txt: 'MORE' }], out);
+  const r = writeCaptionFiles([{ s: 0, e: 1, txt: 'SECOND RUN' }], out);
+  assert.equal(readFileSync(r.srt, 'utf8'), file('1', '00:00:00,000 --> 00:00:01,000', 'SECOND RUN', ''));
+  assert.equal(readFileSync(r.vtt, 'utf8'), file('WEBVTT', '', '1', '00:00:00.000 --> 00:00:01.000', 'SECOND RUN', ''));
+});
+
+test('writeCaptionFiles: with no caption left to show it fails and writes nothing', () => {
+  const out = path.join(mkdtempSync(path.join(tmpdir(), 'ek-')), 'out');
+  assert.throws(() => writeCaptionFiles([], out), /no captions to write: 0 found/);
+  assert.throws(() => writeCaptionFiles([{ s: 1, e: 1, txt: 'NO LENGTH' }, { s: 2, e: 3, txt: ' ' }], out), /no captions to write: 2 found/);
+  assert.ok(!existsSync(out), 'an empty folder was left behind');
 });
 
 for (const name of readdirSync(EXAMPLES)) {

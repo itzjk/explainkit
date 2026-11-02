@@ -1,10 +1,13 @@
 // Caption files. The renderer burns prepare().caps into the video; these functions write those same captions, with the
 // same text and the same times, as files that a platform or an editor can open.
 //   SubRip (.srt)  numbered cues, "00:00:01,500 --> 00:00:03,000"; no standard exists, this is what almost every tool reads
-//   WebVTT (.vtt)  the same cues behind a WEBVTT line, times with a dot; the format browsers and the web platforms read
+//   WebVTT (.vtt)  the same cues behind a WEBVTT line, times with a dot; the W3C format browsers read for <track> captions
 //                  (https://www.w3.org/TR/webvtt1/)
 // Every format starts from cues(), the one place that turns captions into whole milliseconds and clean text lines, and
 // writes each cue with block(): the formats differ only in the separator, the escaping and the header.
+// writeCaptionFiles() puts both files in a folder.
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 const pad = (n, width = 2) => String(n).padStart(width, '0');
 const LINE_BREAK = /\r\n|[\n\r\u2028\u2029]/;
@@ -60,4 +63,16 @@ const escapeVtt = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>
 // WebVTT: a WEBVTT line and a blank line, then the cues with a dot before the milliseconds. UTF-8.
 export function toVtt(caps) {
   return 'WEBVTT\n\n' + cues(caps).map((c, i) => block(i, c, '.', escapeVtt)).join('');
+}
+
+// captions.srt and captions.vtt in outDir (made when it is missing). With no caption left to show it fails instead of
+// writing two empty files. Returns the paths, how many cues were written and how many captions were left out.
+export function writeCaptionFiles(caps, outDir) {
+  const count = cues(caps).length;
+  if (!count) throw new Error(`no captions to write: ${caps.length} found, none with text and a length on screen`);
+  mkdirSync(outDir, { recursive: true });
+  const srt = path.join(outDir, 'captions.srt'), vtt = path.join(outDir, 'captions.vtt');
+  writeFileSync(srt, toSrt(caps));
+  writeFileSync(vtt, toVtt(caps));
+  return { srt, vtt, count, skipped: caps.length - count };
 }
