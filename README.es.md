@@ -76,6 +76,7 @@ explainkit new <dir>                      create a starter project
 explainkit build <dir> [--audio file]     timings + mix + render -> <dir>/out/video.mp4
 explainkit frames <dir> --at 3,40,95      stills at those seconds
 explainkit sheet <dir> [--every 6]        contact sheet of the whole video
+explainkit gallery [--out path]           one still per built-in scene -> out/gallery.jpg
 explainkit gif <dir> --from 2 --to 8      animated GIF of a section
 explainkit render <dir> [--from --to]     render (or a section) from what is in out/
 explainkit align <dir> [--engine estimate|whisper] [--model ggml.bin]
