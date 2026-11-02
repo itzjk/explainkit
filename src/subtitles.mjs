@@ -1,7 +1,10 @@
 // Caption files. The renderer burns prepare().caps into the video; these functions write those same captions, with the
 // same text and the same times, as files that a platform or an editor can open.
 //   SubRip (.srt)  numbered cues, "00:00:01,500 --> 00:00:03,000"; no standard exists, this is what almost every tool reads
-// Every format starts from cues(), the one place that turns captions into whole milliseconds and clean text lines.
+//   WebVTT (.vtt)  the same cues behind a WEBVTT line, times with a dot; the format browsers and the web platforms read
+//                  (https://www.w3.org/TR/webvtt1/)
+// Every format starts from cues(), the one place that turns captions into whole milliseconds and clean text lines, and
+// writes each cue with block(): the formats differ only in the separator, the escaping and the header.
 
 const pad = (n, width = 2) => String(n).padStart(width, '0');
 const LINE_BREAK = /\r\n|[\n\r\u2028\u2029]/;
@@ -40,7 +43,21 @@ export function cues(caps) {
   return list.sort((a, b) => a.start - b.start);
 }
 
-// SubRip: "1", the times with a comma, the text, then a blank line. UTF-8, LF line breaks, numbered from 1 without gaps.
+// One cue: its number, the times, the text lines, then a blank line. Numbered from 1 without gaps, LF line breaks.
+const block = (i, c, sep, esc) => `${i + 1}\n${stamp(c.start, sep)} --> ${stamp(c.end, sep)}\n${c.lines.map(esc).join('\n')}\n\n`;
+
+// SubRip: times with a comma. It has no escape syntax (ffmpeg, for one, shows "&amp;" as typed), so the text is written
+// as it is. UTF-8.
 export function toSrt(caps) {
-  return cues(caps).map((c, i) => `${i + 1}\n${stamp(c.start, ',')} --> ${stamp(c.end, ',')}\n${c.lines.join('\n')}\n\n`).join('');
+  return cues(caps).map((c, i) => block(i, c, ',', l => l)).join('');
+}
+
+// In WebVTT text, & starts a character reference and < starts a tag, so both are escaped; > goes with them, which also
+// keeps the text from ever containing "-->", the one string a cue is not allowed to hold. & goes first so the others
+// are not escaped twice.
+const escapeVtt = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// WebVTT: a WEBVTT line and a blank line, then the cues with a dot before the milliseconds. UTF-8.
+export function toVtt(caps) {
+  return 'WEBVTT\n\n' + cues(caps).map((c, i) => block(i, c, '.', escapeVtt)).join('');
 }

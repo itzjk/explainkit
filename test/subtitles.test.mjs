@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepare } from '../src/project.mjs';
-import { timestamp, cues, toSrt } from '../src/subtitles.mjs';
+import { timestamp, cues, toSrt, toVtt } from '../src/subtitles.mjs';
 
 const EXAMPLES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'examples');
 const file = (...rows) => rows.join('\n') + '\n';
@@ -15,7 +15,7 @@ const LS = String.fromCharCode(0x2028); // U+2028 LINE SEPARATOR, written as a c
 // whole milliseconds with its own arithmetic.
 function readCues(text, sep) {
   const time = new RegExp(`^(\\d{2,}):(\\d{2}):(\\d{2})\\${sep}(\\d{3}) --> (\\d{2,}):(\\d{2}):(\\d{2})\\${sep}(\\d{3})$`);
-  return text.split('\n\n').filter(b => b.trim()).map(block => {
+  return text.replace(/^WEBVTT\n\n/, '').split('\n\n').filter(b => b.trim()).map(block => {
     const [id, timing, ...lines] = block.split('\n');
     const m = time.exec(timing);
     assert.ok(m, `not a timing line: ${JSON.stringify(timing)}`);
@@ -147,7 +147,70 @@ test('a caption with a time that is not a number fails loudly and says which cap
   assert.throws(() => toSrt([{ s: '0.5', e: 1, txt: 'BAD' }]), /caption 1 start is not a finite number/);
 });
 
-test('a known project: words.json -> shots and captions -> the exact SubRip file', () => {
+const unescapeVtt = t => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const timingLine = /^\d{2,}:\d{2}:\d{2}[,.]\d{3} --> \d{2,}:\d{2}:\d{2}[,.]\d{3}$/;
+
+test('toVtt: the exact text of a known list (WEBVTT and a blank line first, a dot before the milliseconds, a blank line after every cue)', () => {
+  const caps = [{ s: 0.12, e: 0.9, txt: 'EVERY PAGE' }, { s: 0.9, e: 2.25, txt: 'IS A SHELF' }, { s: 4, e: 4.6, txt: 'SO?' }];
+  assert.equal(toVtt(caps), file(
+    'WEBVTT', '',
+    '1', '00:00:00.120 --> 00:00:00.900', 'EVERY PAGE', '',
+    '2', '00:00:00.900 --> 00:00:02.250', 'IS A SHELF', '',
+    '3', '00:00:04.000 --> 00:00:04.600', 'SO?', ''));
+});
+
+test('toVtt: no captions give a valid file that is just the header', () => {
+  assert.equal(toVtt([]), 'WEBVTT\n\n');
+});
+
+test('toVtt: the file starts with the letters WEBVTT, no byte order mark', () => {
+  assert.equal(Buffer.from(toVtt([{ s: 0, e: 1, txt: 'A' }])).subarray(0, 6).toString('latin1'), 'WEBVTT');
+});
+
+test('toVtt: & < > are escaped, so a cue never holds a raw tag, a raw character reference or "-->"', () => {
+  const out = toVtt([{ s: 0, e: 1, txt: 'R&D <3 A --> B' }, { s: 1, e: 2, txt: '<b>BOLD</b> &amp; &lt;' }]);
+  assert.deepEqual(readCues(out, '.').map(c => c.lines), [['R&amp;D &lt;3 A --&gt; B'], ['&lt;b&gt;BOLD&lt;/b&gt; &amp;amp; &amp;lt;']]);
+  const text = out.split('\n').filter(l => !timingLine.test(l)).join('\n');
+  assert.ok(!text.includes('-->'), 'an arrow in the text would end the timing line early in a strict reader');
+  assert.ok(!/</.test(text), 'a raw < starts a tag');
+  assert.ok(!/&(?!(amp|lt|gt);)/.test(text), 'a raw & starts a character reference');
+});
+
+test('toVtt: unescaping gives back exactly the text that went in, even text that already looks escaped', () => {
+  const texts = ['R&D', 'Q&A?', 'A < B > C', 'A --> B', '--&gt;', '&amp;', '&lt;3', '&#60; &#x3C;', '<i>x</i>', '<'];
+  const read = readCues(toVtt(texts.map((txt, i) => ({ s: i, e: i + 1, txt }))), '.');
+  assert.deepEqual(read.map(c => unescapeVtt(c.lines.join('\n'))), texts);
+});
+
+test('toVtt: a cue over one hour keeps its hours, and past 99 hours they get a third digit', () => {
+  const out = toVtt([{ s: 3599.5, e: 3601.25, txt: 'ACROSS THE HOUR' }, { s: 360000.5, e: 360001, txt: 'LONG' }]);
+  assert.match(out, /^00:59:59\.500 --> 01:00:01\.250$/m);
+  assert.match(out, /^100:00:00\.500 --> 100:00:01\.000$/m);
+  assert.deepEqual(readCues(out, '.').map(c => [c.start, c.end]), [[3599500, 3601250], [360000500, 360001000]]);
+});
+
+test('toVtt: a zero-length cue is left out (WebVTT needs the end after the start) and the numbering has no gap', () => {
+  const out = toVtt([{ s: 1, e: 2, txt: 'FIRST' }, { s: 2, e: 2, txt: 'ZERO LENGTH' }, { s: 3, e: 3.0004, txt: 'UNDER HALF A MILLISECOND' }, { s: 4, e: 4.001, txt: 'ONE MILLISECOND' }]);
+  assert.equal(out, file('WEBVTT', '', '1', '00:00:01.000 --> 00:00:02.000', 'FIRST', '', '2', '00:00:04.000 --> 00:00:04.001', 'ONE MILLISECOND', ''));
+});
+
+test('toVtt: multi-line text keeps its lines, and an empty line never splits a cue', () => {
+  const out = toVtt([{ s: 0, e: 1, txt: 'ONE\r\nTWO' }, { s: 1, e: 2, txt: 'ABOVE\n\n  \nBELOW' }]);
+  assert.deepEqual(readCues(out, '.').map(c => c.lines), [['ONE', 'TWO'], ['ABOVE', 'BELOW']]);
+  assert.equal(out.split('\n\n').length, 4, 'header, two cues and the empty piece after the last blank line');
+});
+
+test('toVtt: non-ASCII text goes through untouched', () => {
+  const texts = ['¿QUÉ PASÓ, NIÑO?', 'ÉCOUTE: ÇA VA', '日本語のテスト', 'مرحبا بالعالم', '🚀 LIFTOFF 🚀'];
+  assert.deepEqual(readCues(toVtt(texts.map((txt, i) => ({ s: i, e: i + 0.5, txt }))), '.').map(c => c.lines.join('\n')), texts);
+});
+
+test('toVtt and toSrt write the same cues: same numbers, same times, same lines', () => {
+  const caps = [{ s: 3599.5, e: 3601.25, txt: 'ACROSS THE HOUR' }, { s: 5, e: 5, txt: 'GONE' }, { s: 3, e: 4, txt: 'FIRST\nTWO LINES' }, { s: 6, e: 7, txt: '¿SÍ?' }];
+  assert.deepEqual(readCues(toVtt(caps), '.'), readCues(toSrt(caps), ','));
+});
+
+test('a known project: words.json -> shots and captions -> the exact SubRip and WebVTT files', () => {
   const d = tmpProject({
     script: 'Rain fell on the old harbor. Nobody noticed the lamp.',
     plan: "const PLAN = [['Rain fell', 'a'], ['Nobody', 'b']];",
@@ -159,16 +222,24 @@ test('a known project: words.json -> shots and captions -> the exact SubRip file
     ],
   });
   // "on" is a function word, so it moves to the next caption; the last caption lingers 0.6 s after its last word
-  assert.equal(toSrt(prepare(d).caps), file(
+  const { caps } = prepare(d);
+  assert.equal(toSrt(caps), file(
     '1', '00:00:00,500 --> 00:00:01,150', 'RAIN FELL', '',
     '2', '00:00:01,150 --> 00:00:01,750', 'ON THE OLD', '',
     '3', '00:00:01,750 --> 00:00:02,900', 'HARBOR', '',
     '4', '00:00:03,000 --> 00:00:03,950', 'NOBODY NOTICED', '',
     '5', '00:00:03,950 --> 00:00:05,200', 'THE LAMP', ''));
+  assert.equal(toVtt(caps), file(
+    'WEBVTT', '',
+    '1', '00:00:00.500 --> 00:00:01.150', 'RAIN FELL', '',
+    '2', '00:00:01.150 --> 00:00:01.750', 'ON THE OLD', '',
+    '3', '00:00:01.750 --> 00:00:02.900', 'HARBOR', '',
+    '4', '00:00:03.000 --> 00:00:03.950', 'NOBODY NOTICED', '',
+    '5', '00:00:03.950 --> 00:00:05.200', 'THE LAMP', ''));
 });
 
 for (const name of readdirSync(EXAMPLES)) {
-  test(`example "${name}": one cue per caption, in order, never overlapping, and the file reads back to the same milliseconds`, () => {
+  test(`example "${name}": one cue per caption, in order, never overlapping, and both files read back to the same milliseconds`, () => {
     const { caps } = prepare(path.join(EXAMPLES, name)), read = readCues(toSrt(caps), ',');
     assert.ok(caps.length > 20, `${name} has ${caps.length} captions`);
     assert.equal(read.length, caps.length, 'a caption was left out');
@@ -180,5 +251,6 @@ for (const name of readdirSync(EXAMPLES)) {
       assert.ok(c.end > c.start, `cue ${i + 1} has no length`);
       if (i) assert.ok(c.start >= read[i - 1].end, `cue ${i + 1} starts before cue ${i} ends: the video shows one caption at a time`);
     });
+    assert.deepEqual(readCues(toVtt(caps), '.').map(c => ({ ...c, lines: c.lines.map(unescapeVtt) })), read, 'the WebVTT file has other cues than the SubRip file');
   });
 }
