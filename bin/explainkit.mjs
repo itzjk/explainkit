@@ -13,7 +13,7 @@ import { have, run, findOnPath } from '../src/util.mjs';
 import { whisperDoctor } from '../src/whisper-model.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const HELP = `explainkit: script + narration -> vertical 2D explainer video (1080x1920, 30 fps), all on your machine.
+const HELP = `explainkit: script + narration -> vertical 2D explainer video (1080x1920 by default, 30 fps), all on your machine.
 
   explainkit new <dir>                      create a starter project
   explainkit build <dir> [--audio file]     timings + mix + render: out/video.mp4 (silent narration track if no audio)
@@ -29,15 +29,16 @@ const HELP = `explainkit: script + narration -> vertical 2D explainer video (108
   explainkit doctor                         check ffmpeg, Chromium, fonts, and the whisper model if you use it
 
 Common options: --audio <file> uses that narration instead of project.json's "audio".
+                --output 9:16|4:5|1:1 sets the video size (1080x1920, 1080x1350, 1080x1080) instead of project.json's "output".
 Docs: README.md`;
 
 const { values: v, positionals: pos } = parseArgs({ allowPositionals: true, options: {
   audio: { type: 'string' }, at: { type: 'string' }, every: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' },
   engine: { type: 'string' }, model: { type: 'string' }, voice: { type: 'string' }, cmd: { type: 'string' }, 'piper-bin': { type: 'string' }, 'piper-config': { type: 'string' }, width: { type: 'string' },
-  fps: { type: 'string' }, out: { type: 'string' }, help: { type: 'boolean', short: 'h' } } });
+  fps: { type: 'string' }, out: { type: 'string' }, output: { type: 'string' }, help: { type: 'boolean', short: 'h' } } });
 const [command, arg] = pos;
 const dirOf = () => { if (!arg) fail(`usage: explainkit ${command} <project-folder>`); return path.resolve(arg); };
-const overrides = () => (v.audio ? { audio: path.resolve(v.audio) } : {});
+const overrides = () => ({ ...(v.audio ? { audio: path.resolve(v.audio) } : {}), ...(v.output !== undefined ? { output: v.output } : {}) });
 const fail = m => { console.error(`error: ${m}`); process.exit(1); };
 const num = (x, d) => (x === undefined ? d : Number(x));
 
