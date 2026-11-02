@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { narrate } from '../src/tts.mjs';
 import { run } from '../src/util.mjs';
-import { piperCommand, piperVoice, binaryHelp, voiceUrls, ASSETS, RELEASE, SENTENCE_SILENCE } from '../src/piper.mjs';
+import { piperCommand, piperVoice, binaryHelp, voiceUrls, ASSETS, RELEASE, VOICE, SENTENCE_SILENCE } from '../src/piper.mjs';
 
 const FAKE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'fake-piper.mjs');
 const FAKE_BIN = `node "${FAKE}"`;
@@ -117,4 +117,16 @@ test('piper preset: a program whose own path has spaces is found and run', { ski
   writeFileSync(prog, `#!/bin/sh\nexec node "${FAKE}" "$@"\n`); chmodSync(prog, 0o755);
   const [call] = await speak({ scriptFile: script('Hi there.'), out: path.join(dir, 'v.wav'), voice: model, piperBin: prog });
   assert.equal(call.text, 'Hi there.');
+});
+
+test('docs/piper.md gives the same files, links, voice and command line as the program', () => {
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const doc = readFileSync(path.join(root, 'docs', 'piper.md'), 'utf8'), readme = readFileSync(path.join(root, 'README.md'), 'utf8');
+  for (const asset of Object.values(ASSETS)) assert.ok(doc.includes(`\`${asset}\``), asset);
+  assert.ok(doc.includes(RELEASE.replace('/download/', '/tag/')));
+  for (const url of voiceUrls()) assert.ok(doc.includes(`<${url}>`), url);
+  assert.ok(doc.includes(VOICE.card), 'model card link');
+  assert.ok(doc.includes(`**${VOICE.license}**`), 'license of the voice, next to the recipe');
+  assert.ok(doc.includes(piperCommand({ model: 'voices/en_US-ljspeech-medium.onnx', platform: 'linux' })), 'the command line it runs');
+  assert.ok(readme.includes('docs/piper.md'));
 });
