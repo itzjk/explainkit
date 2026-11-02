@@ -14,9 +14,9 @@ import { findWhisperModel, modelHelp, cliHelp, modelUrl, RECOMMENDED } from './w
 
 export const DEFAULT_WPS = 2.6; // words per second of a calm narrator, used when there is no audio to measure
 
-// script.txt -> clean text. Lines starting with # are comments; [bracketed notes] are removed.
+// script.txt -> clean text. Lines starting with # are comments; [bracketed notes] are removed; *markers* keep the word.
 export function scriptText(raw) {
-  return raw.replace(/\r/g, '').split('\n').filter(l => !/^\s*#/.test(l)).join('\n').replace(/\[[^\]]*\]/g, ' ').replace(/[ \t]+/g, ' ').trim();
+  return raw.replace(/\r/g, '').split('\n').filter(l => !/^\s*#/.test(l)).join('\n').replace(/\[[^\]]*\]/g, ' ').replace(/\*([^*]+)\*/g, '$1').replace(/[ \t]+/g, ' ').trim();
 }
 
 // how long a word takes relative to the others: letters, plus pause weight for punctuation

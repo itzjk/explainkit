@@ -9,6 +9,11 @@ test('scriptText drops comment lines and [notes]', () => {
   assert.equal(scriptText('# note\nHello [pause] world.\n'), 'Hello world.');
 });
 
+test('scriptText strips *markers* and keeps the word', () => {
+  assert.equal(scriptText('almost *eight* times'), 'almost eight times');
+  assert.equal(scriptText('*Big* deal.'), 'Big deal.');
+});
+
 test('estimateWords: one entry per word, in order, strictly inside the duration, longer words last longer', () => {
   const w = estimateWords('A tiny cat. An extraordinarily enormous elephant!', { wps: 2.5 });
   assert.equal(w.length, 7);
