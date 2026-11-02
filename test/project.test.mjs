@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { prepare, parsePlan, captions } from '../src/project.mjs';
+import { prepare, parsePlan, captions, markedSet } from '../src/project.mjs';
 
 const EXAMPLES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'examples');
 
@@ -54,6 +54,28 @@ test('captions: 1-3 words, never end on a function word, cut at punctuation', ()
   assert.ok(!caps.slice(0, -1).some(c => /\b(THE|ON|A)$/.test(c.txt)), JSON.stringify(caps.map(c => c.txt)));
   assert.ok(caps.some(c => c.txt.endsWith('MAT')), 'a caption ends at the comma');
   assert.ok(!caps.some(c => /MAT/.test(c.txt) && /THEN/.test(c.txt)), 'no caption spans the comma');
+});
+
+test('markedSet returns normalized tokens inside *markers*, ignores comment lines', () => {
+  const s = markedSet('# skip this\nAlmost *eight* times *greater*.');
+  assert.ok(s.has('eight'), 'eight should be marked');
+  assert.ok(s.has('greater'), 'greater should be marked');
+  assert.ok(!s.has('times'), 'times should not be marked');
+});
+
+test('captions: marked word gets hi pointing at its index in the caption', () => {
+  const words = 'almost eight times.'.split(' ').map((t, i) => ({ txt: t, s: i * .3, e: i * .3 + .25 }));
+  const caps = captions(words, { fixes: [], language: 'en', marks: new Set(['eight']) });
+  const cap = caps.find(c => /EIGHT/.test(c.txt));
+  assert.ok(cap, 'a caption containing EIGHT must exist');
+  const idx = cap.txt.split(' ').indexOf('EIGHT');
+  assert.equal(cap.hi, idx, `hi should be ${idx} for "EIGHT" in "${cap.txt}"`);
+});
+
+test('captions: no hi field when no marks are provided', () => {
+  const words = 'almost eight times.'.split(' ').map((t, i) => ({ txt: t, s: i * .3, e: i * .3 + .25 }));
+  const caps = captions(words, { fixes: [], language: 'en' });
+  assert.ok(caps.every(c => c.hi == null), 'no caption should have hi when marks is absent');
 });
 
 test('captions: fixes rewrite a word, wholeWord only matches whole words, times limits uses', () => {
