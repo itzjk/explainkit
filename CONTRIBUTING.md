@@ -25,6 +25,7 @@ npm test        # unit tests + renders every example (about 1-2 minutes)
 |---|---|
 | `src/runtime/` | what runs in the browser: `draw.js` helpers, `character.js`, `scenes.js`, `overlay.js` (reframes, label, captions, pulse) |
 | `src/project.mjs` | script + timings + plan -> shots and captions |
+| `src/guides.mjs` | the platform UI zones that `frames --guides` tints on stills: one constant, with where each number comes from |
 | `src/output.mjs` | video sizes (9:16, 4:5, 1:1): the crop of the stage and where the label, captions and pulse go |
 | `src/align.mjs` | word timings (estimate, whisper.cpp, files) |
 | `src/mix.mjs`, `src/synth.mjs` | soundtrack |
