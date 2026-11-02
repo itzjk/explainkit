@@ -38,6 +38,14 @@ npm test        # unit tests + renders every example (about 1-2 minutes)
 
 Put it in `src/runtime/scenes.js` as `ESC.name = (p, P, T) => ...`, document the params in a comment above it, and add a still of it to the PR description (`explainkit frames`). Keep text out of scenes unless it comes from `P`, so it works in any language. Scenes draw the 1080x1920 stage, but 4:5 and 1:1 videos keep only the middle of it (README, Output sizes): keep what matters in rows 420 to 1499 so it survives every size.
 
+After adding a scene (or intentionally changing the look of an existing one), regenerate the golden frames:
+
+```bash
+UPDATE_GOLDEN=1 node --test test/scenes-golden.test.mjs
+```
+
+This rewrites `test/scenes-golden.json` with the new SHA-256 pixel hashes. Commit the updated file alongside your scene change. If a future change to `draw.js` alters a scene accidentally, the test will fail and name the scene.
+
 ## Adding an example
 
 Copy an existing folder in `examples/`, write your own script (original, or public domain), and make sure `npm test` still passes: it renders every shot of every example.
