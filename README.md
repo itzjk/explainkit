@@ -105,7 +105,9 @@ explainkit tts <dir> --engine kokoro|piper|command [--voice af_heart|voice.onnx]
 explainkit doctor
 ```
 
-`project.json`: `script`, `audio`, `words`, `plan`, `scenes` (list of files), `fixes` (rewrite how a word is captioned: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `captions`, `pulse`, `reframes`, `labelY`, `captionY`, `tail`, `language` (`en`, `es`), `wordsPerSecond`.
+`project.json`: `script`, `audio`, `words`, `plan`, `scenes` (list of files), `fixes` (rewrite how a word is captioned: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `captions`, `pulse`, `reframes`, `labelY`, `captionY`, `tail`, `language` (`en`, `es`, `pt`, `fr`), `wordsPerSecond`.
+
+`language` is a two-letter code and defaults to `en`. It decides which words a caption never ends on (articles, prepositions, conjunctions and the like), so "the" moves to the next caption instead of hanging at the end of this one. Lists exist for `en`, `es`, `pt` and `fr`; any other code uses the English list. With `es`, a number written `1,000` is captioned `1.000`. The `whisper` engine also hands the code to whisper.cpp as the language to transcribe, so use the code it knows: `pt`, not `pt-BR`.
 
 ## Caption files (.srt and .vtt)
 
