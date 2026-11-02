@@ -9,6 +9,7 @@ import { mix } from '../src/mix.mjs';
 import { narrate } from '../src/tts.mjs';
 import { writeCaptionFiles } from '../src/subtitles.mjs';
 import { stills, sheet, video, gif } from '../src/render.mjs';
+import { gallery } from '../src/gallery.mjs';
 import { have, run, findOnPath } from '../src/util.mjs';
 import { whisperDoctor } from '../src/whisper-model.mjs';
 
@@ -19,6 +20,7 @@ const HELP = `explainkit: script + narration -> vertical 2D explainer video (108
   explainkit build <dir> [--audio file]     timings + mix + render: out/video.mp4 (silent narration track if no audio)
   explainkit frames <dir> --at 3,40,95 [--guides]   stills at those seconds -> out/stills/ (--guides tints the platform UI zones, on stills only)
   explainkit sheet <dir> [--every 6]        contact sheet of the whole video -> out/sheet.jpg
+  explainkit gallery [--out path]           one still per built-in scene -> out/gallery.jpg
   explainkit render <dir> [--from 0 --to 10]   render the video (or a section) from what is already in out/
   explainkit gif <dir> --from 2 --to 8      animated GIF of a section -> out/preview.gif
   explainkit srt <dir>                      the video's captions as files -> out/captions.srt and out/captions.vtt
@@ -92,6 +94,11 @@ async function main() {
   if (v.guides && command !== 'frames') fail('--guides only works with frames: the zones are for looking at stills and are never drawn into a video, a sheet or a gif');
   if (command === 'doctor') return doctor();
   if (command === 'new') { if (!arg) fail('usage: explainkit new <dir>'); return scaffold(path.resolve(arg)); }
+  if (command === 'gallery') {
+    const outFile = path.resolve(v.out || path.join(process.cwd(), 'out', 'gallery.jpg'));
+    const r = await gallery(outFile);
+    return console.log(`${r.scenes.length} scenes -> ${path.relative(process.cwd(), r.file)}`);
+  }
   const dir = dirOf(), out = path.join(dir, 'out');
   const cfg = () => loadConfig(dir, overrides());
   switch (command) {

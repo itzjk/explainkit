@@ -49,6 +49,10 @@ test('--help lists --guides as a frames option', () => {
   assert.match(cli('--help').stdout, /frames <dir> --at 3,40,95 \[--guides\]/);
 });
 
+test('--help lists gallery as a command', () => {
+  assert.match(cli('--help').stdout, /gallery \[--out path\]/);
+});
+
 test('--guides is refused by every command that is not frames, before it does any work, so a build never carries guides', () => {
   for (const command of ['build', 'render', 'sheet', 'gif', 'align', 'mix']) {
     const d = project(), r = cli(command, d, '--guides');
@@ -56,6 +60,9 @@ test('--guides is refused by every command that is not frames, before it does an
     assert.match(r.stderr, /error: --guides only works with frames/, command);
     assert.ok(!existsSync(path.join(d, 'out')), `${command} created out/ before refusing`);
   }
+  const rg = cli('gallery', '--guides');
+  assert.equal(rg.status, 1, 'gallery --guides');
+  assert.match(rg.stderr, /error: --guides only works with frames/, 'gallery --guides');
 });
 
 test('frames --guides writes the guided still and only that one; on a 4:5 project it is refused before Chromium starts', () => {
