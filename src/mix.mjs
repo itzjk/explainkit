@@ -10,7 +10,7 @@
 // Use only audio you have the rights to. The repository ships none: bring your own files or use the synth sounds.
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { ffmpeg, duration } from './util.mjs';
+import { ffmpeg, duration, norm } from './util.mjs';
 import { isSynth, synth } from './synth.mjs';
 
 export function mixConfig(dir) {
@@ -18,9 +18,28 @@ export function mixConfig(dir) {
   return Object.assign({ music: [], hits: [], musicVolume: 0.22, hitVolume: 0.5, tail: 1.4, lufs: -14 }, existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : {});
 }
 
-// total: seconds of video; voice: path or null. Returns { file, seconds }.
-export function mix(dir, { voice = null, total }) {
-  const cfg = mixConfig(dir), out = path.join(dir, 'out'), cache = path.join(out, '.synth');
+// Resolve { "words": "..." } anchors in hits[].at and music[].from to seconds.
+// words is [{ text, start, end }] from loadWords(). Plain numbers pass through unchanged.
+export function resolveMixAnchors(cfg, words) {
+  const tok = [], owner = [];
+  (words || []).forEach((w, i) => norm(w.text).split(' ').filter(Boolean).forEach(t => { tok.push(t); owner.push(i); }));
+  const resolve = (anchor) => {
+    const a = norm(anchor).split(' ').filter(Boolean);
+    for (let i = 0; i <= tok.length - a.length; i++) {
+      if (a.every((t, k) => tok[i + k] === t)) return words[owner[i]].start;
+    }
+    throw new Error(`mix.json: anchor not found: "${anchor}"`);
+  };
+  const isWordAnchor = v => v && typeof v === 'object' && v.words != null;
+  const hits = cfg.hits.map(h => isWordAnchor(h.at) ? { ...h, at: resolve(h.at.words) } : h);
+  const music = cfg.music.map(m => isWordAnchor(m.from) ? { ...m, from: resolve(m.from.words) } : m);
+  return { ...cfg, hits, music };
+}
+
+// total: seconds of video; voice: path or null; words: [{ text, start, end }] or null. Returns { file, seconds }.
+export function mix(dir, { voice = null, total, words = null }) {
+  const cfg = resolveMixAnchors(mixConfig(dir), words || []);
+  const out = path.join(dir, 'out'), cache = path.join(out, '.synth');
   mkdirSync(out, { recursive: true });
   const seconds = voice ? duration(voice) + cfg.tail : total;
   const resolve = (f, secs) => isSynth(f) ? synth(f, cache, secs) : path.resolve(dir, f);
