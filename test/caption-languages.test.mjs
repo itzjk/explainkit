@@ -12,18 +12,21 @@ const CASES = {
     ],
   },
   es: {
-    never: 'EL LA LOS DE EN QUE SU Y A'.split(' '),
+    never: 'EL LA LOS LAS UN UNA UNOS DE DEL AL EN CON POR PARA SIN SOBRE ENTRE DESDE HASTA HACIA SEGÚN Y O PERO QUE COMO SI CUANDO PORQUE AUNQUE SU SUS MI MIS ME TE SE LE LES NOS NO MÁS MUY ES ERA FUE ESTE ESTA ESE ESA'.split(' '),
     sentences: [
       'Cuando el faro se apagó los barcos perdieron el camino hacia la costa y la tripulación miró el cielo sin una sola estrella.',
       'El guardián vivía solo en una isla entre la niebla pero sabía que su luz era la única esperanza de los marineros.',
       'Nadie en el pueblo quiso hablar sobre lo que pasó con los hombres que salieron al mar aquella noche.',
       'Ella le dijo que no volvería a la casa hasta que la verdad saliera a la luz.',
+      'Si esta historia es cierta entonces ninguno de nosotros volverá a mirar el mar como antes.',
+      'Mis padres me contaron que el faro fue construido por un hombre que no confiaba ni en los mapas ni en las estrellas.',
+      'Según el diario el capitán nos dijo que los marineros o se quedaban en el barco o se perdían entre las olas.',
     ],
   },
 };
 
 const spoken = sentence => sentence.split(' ').map((txt, i) => ({ txt, s: i * .3, e: i * .3 + .25 }));
-const endings = (sentence, language) => captions(spoken(sentence), { fixes: [], language }).slice(0, -1).map(c => c.txt.split(' ').at(-1));
+const endings = (sentence, language) => captions(spoken(sentence), { fixes: [], language }).slice(0, -1).filter(c => c.txt.includes(' ')).map(c => c.txt.split(' ').at(-1));
 
 function withoutList(run) {
   FUNCTION_WORDS.none = /^$/;
@@ -37,7 +40,11 @@ test('every language that has a function-word list has sentences below', () => {
 for (const [language, { never, sentences }] of Object.entries(CASES)) {
   const hanging = (sentence, lang) => endings(sentence, lang).filter(w => never.includes(w) || FUNCTION_WORDS[language].test(w));
 
-  test(`captions (${language}): no caption ends on a function word`, () => {
+  test(`captions (${language}): the list holds the words that must never end a caption`, () => {
+    for (const w of never) assert.ok(FUNCTION_WORDS[language].test(w), w);
+  });
+
+  test(`captions (${language}): no caption of two or more words ends on a function word`, () => {
     for (const s of sentences) assert.deepEqual(hanging(s, language), [], s);
   });
 
