@@ -7,7 +7,7 @@ import { openStage } from './render.mjs';
 import { ffmpeg } from './util.mjs';
 
 // params that produce a recognisable tile for scenes that draw nothing meaningful with {}
-const SCENE_PARAMS = {
+export const SCENE_PARAMS = {
   thermometer: { from: -10, to: 40 },
   title: { lines: ['EXPLAINKIT'], stars: true },
   dialogue: { lines: ['Hello!'] },
