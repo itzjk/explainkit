@@ -7,6 +7,11 @@
 //     "musicVolume": 0.22, "hitVolume": 0.5, "tail": 1.4, "lufs": -14 }
 // "volume" is a number or an ffmpeg expression in t (for example "if(gt(t,30),0.6,1)").
 // "from" is the second of the video where the track enters, "duration" how long it plays.
+// "at" and "from" accept a word anchor instead of a fixed second:
+//   { "file": "synth:boom", "at": { "words": "Now it floats" } }
+//   { "file": "synth:pad",  "from": { "words": "Now it floats" } }
+// The cue fires when the narrator reaches those words. Re-recording the narration moves the cue automatically.
+// An anchor that is not found in the script is a clear error that names it.
 // Use only audio you have the rights to. The repository ships none: bring your own files or use the synth sounds.
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
