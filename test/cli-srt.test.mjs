@@ -80,7 +80,9 @@ test('srt works when the video has no burned-in captions ("captions": false), wh
 
 test('srt on a copy of an example project: one cue per caption, and nothing else is written', () => {
   const d = path.join(mkdtempSync(path.join(tmpdir(), 'ek-')), 'lighthouse');
-  cpSync(path.join(ROOT, 'examples', 'lighthouse'), d, { recursive: true });
+  // out/ is ignored by git; a local build leaves files there that a fresh clone does not have, so it is not copied
+  const src = path.join(ROOT, 'examples', 'lighthouse');
+  cpSync(src, d, { recursive: true, filter: f => path.relative(src, f).split(path.sep)[0] !== 'out' });
   const r = explainkit('srt', d);
   assert.equal(r.status, 0, r.stderr);
   const n = prepare(d).caps.length;
