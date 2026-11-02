@@ -59,13 +59,35 @@ mix.json + your music ─► mix (duck under voice, -14 LUFS) ─► audio-final
 1. **Script and plan.** `plan.js` is a list of shots: `['the words where it starts', 'sceneName', { params }, 'LABEL']`. A shot starts when the narrator says its anchor words and lasts until the next anchor, so the picture always follows the voice and changing the narration does not break the edit.
 2. **Timings.** `explainkit align` writes `out/words.json` (`[{ "text", "start", "end" }]`).
    - `estimate` (default): spreads your words over the speech it finds in the audio, or over a reading-speed duration when there is no audio. On one 42-word test narration it was off by 0.25 s on average and 0.66 s at worst against whisper (measured Oct 31, 2026, one voice: treat it as a draft, not a guarantee).
-   - `whisper`: `--engine whisper --model ggml-base.bin` uses [whisper.cpp](https://github.com/ggerganov/whisper.cpp) (`whisper-cli`) for exact word times. You download the model yourself.
+   - `whisper`: `--engine whisper` uses [whisper.cpp](https://github.com/ggml-org/whisper.cpp) for exact word times. It needs `whisper-cli` and one model file that you download yourself: see [Exact word times](#exact-word-times-whispercpp).
    - bring your own `words.json`, or whisper.cpp JSON: both are read.
 3. **Scenes.** A scene is a function `ESC.name = (p, P, T) => { ... }` that draws a whole shot on a 1080x1920 canvas: `p` is progress through the shot (0 to 1), `P` its params, `T` the absolute time. The same `T` always gives the same frame, so you can check any second without rendering the video (`explainkit frames`). `src/runtime/draw.js` has the drawing helpers (backgrounds, glow, stars, city skyline, clock, phone, speech bubble...), `character.js` an articulated character with eight expressions, `scenes.js` a few generic scenes (`title`, `face`, `dialogue`, `calendar`, `sunrise`...).
 4. **Overlay.** Long shots re-frame every 2.3 s so a still scene still reads as cuts. Captions are 1-3 words, cut at punctuation and pauses, and never leave a word like "the" alone at the end. Optional heart-rate monitor (`"pulse": true`).
 5. **Voice.** A voice is an audio file you provide. Optional adapters: `explainkit tts --engine command --cmd 'espeak-ng -f {in} -w {out}'` for any text-to-speech program, or `--engine kokoro` for the open Kokoro-82M voice through the optional `kokoro-js` package (the model downloads on first use, about 90 MB, from Hugging Face). Check the license of whatever voice you use before you publish. The Kokoro adapter follows the package's documented API but has not been run end to end by the maintainers yet ([#14](https://github.com/itzjk/explainkit/issues/14)); the `command` adapter and the audio-file path are the verified ones.
 6. **Sound.** `mix.json` lists music tracks and hit sounds. Music ducks under the voice with sidechain compression and the result is normalized to -14 LUFS (a 42-second example measured -14.3 LUFS). Built-in `synth:pad`, `synth:drone`, `synth:boom`, `synth:tick` and `synth:rise` are computed from sine waves and noise, so there is no audio to license: bring your own tracks when you want real music, and only use music you have the rights to. This repository contains no recorded audio.
 7. **Render.** Chromium draws frames, ffmpeg encodes H.264 + AAC. Fonts (Barlow Condensed, Barlow, JetBrains Mono, all SIL OFL) are loaded and checked before the first frame, so the text is identical on macOS, Linux and Windows. Measured on an Apple-silicon Mac: a 42 s video took 51 s end to end (timings, mix and render).
+
+## Exact word times (whisper.cpp)
+
+The default timings are an estimate. To get the second each word is really spoken, use [whisper.cpp](https://github.com/ggml-org/whisper.cpp). It needs two things, and explainkit downloads neither:
+
+1. **`whisper-cli`**, the program. macOS: `brew install whisper.cpp`. Linux and Windows: build it as the whisper.cpp README says (`cmake -B build`, then `cmake --build build -j --config Release`) and put `build/bin` on your PATH.
+2. **One model file**, `ggml-base.bin` (141 MiB, understands every language), from the whisper.cpp model repository. Save it where explainkit looks without being told, `~/.explainkit/models/ggml-base.bin` (Windows: `%USERPROFILE%\.explainkit\models\ggml-base.bin`):
+
+```bash
+curl -L --create-dirs -o ~/.explainkit/models/ggml-base.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+```
+
+Then:
+
+```bash
+npx explainkit align my-video --engine whisper     # writes my-video/out/words.json
+npx explainkit doctor                              # shows the whisper-cli and the model it found
+```
+
+Keeping the model somewhere else? Pass `--model /path/to/ggml-base.bin` or set the `WHISPER_MODEL` environment variable. explainkit looks in this order: `--model`, `WHISPER_MODEL`, the models folder. A path you gave is never swapped for another, so a typo is reported instead of silently ignored.
+
+When the file is wrong (a folder, empty, a saved web page, a Git LFS pointer, not a ggml model), the error says which of those it is and repeats the steps above. The models whose names contain `.en` only understand English, so explainkit refuses them for a project whose `language` is not `en`. Bigger models (`small`, `medium`) hear more words correctly and take longer; all of them are listed at [huggingface.co/ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp/tree/main).
 
 ## Commands
 

@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { inspectModel, findWhisperModel, findOnPath, modelsFolder, expandHome, modelHelp, cliHelp, whisperDoctor, modelUrl, RECOMMENDED } from '../src/whisper-model.mjs';
 
 const tmp = () => mkdtempSync(path.join(tmpdir(), 'ek model-'));
@@ -169,4 +170,11 @@ test('doctor: whisper-cli and a good model are both reported as ok, with the pat
   const r = whisperDoctor({ env: { PATH: bin }, home, platform: process.platform });
   assert.deepEqual(r.lines, [`ok   whisper-cli: ${cli}`, `ok   whisper model: ${model} (0 MiB, any language, from the models folder)`]);
   assert.equal(r.failed, false);
+});
+
+test('the README gives the same file, link, size and folder as the program', () => {
+  const readme = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'README.md'), 'utf8');
+  assert.ok(readme.includes(modelUrl(RECOMMENDED.file)), 'download link');
+  assert.ok(readme.includes(`~/.explainkit/models/${RECOMMENDED.file}`), 'models folder');
+  assert.ok(readme.includes(`\`${RECOMMENDED.file}\` (${Math.round(RECOMMENDED.bytes / 1048576)} MiB`), 'file and size');
 });
