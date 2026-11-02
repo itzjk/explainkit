@@ -1,3 +1,5 @@
+[English](README.md) · **Español** · [Português](README.pt-BR.md)
+
 # explainkit
 
 **Convierte un guion y una narración en un video explicativo 2D vertical (1080x1920, 30 fps) con planos, subtítulos palabra por palabra y una banda sonora mezclada. Todo se ejecuta en tu máquina. Licencia MIT.**

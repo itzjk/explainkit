@@ -1,3 +1,5 @@
+[English](README.md) · [Español](README.es.md) · **Português**
+
 # explainkit
 
 **Transforme um roteiro e uma narração em um vídeo explicativo 2D vertical (1080x1920, 30 fps) com planos, legendas palavra por palavra e uma trilha sonora mixada. Tudo roda na sua máquina. Licença MIT.**

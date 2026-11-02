@@ -1,3 +1,5 @@
+**English** · [Español](README.es.md) · [Português](README.pt-BR.md)
+
 # explainkit
 
 **Turn a script and a narration into a vertical 2D explainer video (1080x1920, 30 fps) with shots, word-by-word captions and a mixed soundtrack. Everything runs on your machine. MIT licensed.**
