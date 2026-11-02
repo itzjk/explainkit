@@ -1,4 +1,4 @@
-// Headless Chromium draws every frame on a 1080x1920 canvas; ffmpeg encodes them. Same time in, same frame out.
+// Headless Chromium draws every frame (1080x1920, or the 4:5 or 1:1 crop of it); ffmpeg encodes them. Same time in, same frame out.
 import { writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -18,7 +18,7 @@ export async function openStage(datos) {
   const launch = args => chromium.launch({ args: ['--disable-gpu-vsync', ...args] });
   // some Linux containers and CI images refuse the sandbox: retry without it
   const browser = await launch([]).catch(e => { if (/Executable doesn't exist/.test(String(e))) throw new Error('Chromium is not installed. Run: npx playwright install chromium'); return launch(['--no-sandbox']); });
-  const page = await browser.newPage({ viewport: { width: 540, height: 960 } });
+  const page = await browser.newPage({ viewport: { width: datos.layout.width / 2, height: datos.layout.height / 2 } });
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
@@ -36,7 +36,7 @@ export async function openStage(datos) {
     if (mark) { ctx.setTransform(1, 0, 0, 1, 0, 0); rrect(16, 16, 250, 96, 14, 'rgba(0,0,0,.75)', null); text(mark, 141, 70, 80, '#ffd166'); }
     return document.getElementById('c').toDataURL(type, .92);
   }, [t, mark, type]).then(u => Buffer.from(u.split(',')[1], 'base64'));
-  return { frame, errors, close: () => browser.close() };
+  return { frame, errors, page, close: () => browser.close() };
 }
 
 function encoder(args, output) {
@@ -62,7 +62,7 @@ export async function sheet(datos, outDir, every = 6) {
   try { for (let t = .5; t < datos.fin; t += every) writeFileSync(path.join(tmp, `${String(n++).padStart(4, '0')}.jpg`), await st.frame(t, `${t.toFixed(1)} s`)); }
   finally { report(st.errors); await st.close(); }
   const cols = 8, file = path.join(outDir, 'sheet.jpg');
-  ffmpeg(['-framerate', '1', '-i', path.join(tmp, '%04d.jpg'), '-vf', `scale=270:480,tile=${cols}x${Math.ceil(n / cols)}`, '-frames:v', '1', file], 'contact sheet');
+  ffmpeg(['-framerate', '1', '-i', path.join(tmp, '%04d.jpg'), '-vf', `scale=270:-2,tile=${cols}x${Math.ceil(n / cols)}`, '-frames:v', '1', file], 'contact sheet');
   rmSync(tmp, { recursive: true, force: true });
   return { file, frames: n };
 }

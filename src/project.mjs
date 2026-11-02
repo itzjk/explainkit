@@ -4,7 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { norm } from './util.mjs';
 import { scriptText, estimateWords, readWords } from './align.mjs';
-import { DEFAULT_OUTPUT, resolveOutput } from './output.mjs';
+import { DEFAULT_OUTPUT, layoutFor } from './output.mjs';
 
 // words that never end a caption on their own: they move to the next caption
 export const FUNCTION_WORDS = {
@@ -16,7 +16,7 @@ export const FUNCTION_WORDS = {
 
 export const DEFAULTS = {
   script: 'script.txt', audio: null, words: null, plan: 'plan.js', scenes: [], fixes: [],
-  captions: true, pulse: false, reframes: true, labelY: 300, captionY: 1395, tail: 1.8, language: 'en', wordsPerSecond: 2.6,
+  captions: true, pulse: false, reframes: true, labelY: null, captionY: null, tail: 1.8, language: 'en', wordsPerSecond: 2.6,
   output: DEFAULT_OUTPUT,
 };
 
@@ -26,7 +26,8 @@ export function loadConfig(dir, overrides = {}) {
   const cfg = Object.assign({}, DEFAULTS, JSON.parse(readFileSync(file, 'utf8')), overrides);
   const abs = p => (p ? path.resolve(dir, p) : null);
   const audio = abs(cfg.audio);
-  return { ...cfg, output: resolveOutput(cfg.output).name, dir, audioFile: audio && existsSync(audio) ? audio : null,
+  const layout = layoutFor(cfg.output, cfg);
+  return { ...cfg, output: layout.name, layout, dir, audioFile: audio && existsSync(audio) ? audio : null,
     scriptFile: abs(cfg.script), planFile: abs(cfg.plan), sceneFiles: cfg.scenes.map(abs),
     wordsFile: cfg.words ? abs(cfg.words) : path.join(dir, 'out', 'words.json') };
 }
@@ -70,7 +71,7 @@ export function prepare(dir, overrides = {}) {
   }
   shots[0].s = 0;
   shots.forEach((sh, i) => { sh.e = i + 1 < shots.length ? shots[i + 1].s : end; });
-  return { shots, caps: captions(pal, cfg), fin: end, source, config: { captions: cfg.captions, pulse: cfg.pulse, reframes: cfg.reframes, labelY: cfg.labelY, captionY: cfg.captionY }, sceneFiles: cfg.sceneFiles, cfg };
+  return { shots, caps: captions(pal, cfg), fin: end, source, layout: cfg.layout, config: { captions: cfg.captions, pulse: cfg.pulse, reframes: cfg.reframes, layout: cfg.layout }, sceneFiles: cfg.sceneFiles, cfg };
 }
 
 // captions: 1-3 words, cut at punctuation, at pauses longer than 0.35 s and past 15 characters
