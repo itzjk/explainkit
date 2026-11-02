@@ -36,17 +36,28 @@ const CASES = {
       'Segundo o diário o capitão nos disse que os marinheiros ou ficavam no barco ou se perdiam entre as ondas.',
     ],
   },
+  de: {
+    never: 'DER DIE DAS DEN DEM DES EIN EINE EINEN EINEM EINER EINES AN AUF AUS BEI BIS DURCH FÜR GEGEN IN MIT NACH NEBEN OHNE SEIT ÜBER UM UNTER VON VOM VOR ZU ZUM ZUR ZWISCHEN UND ABER ODER DOCH DENN SONDERN WEIL DASS WENN OB ALS DA OBWOHL WÄHREND NOCH NUR ICH DU ER SIE ES WIR IHR MAN MIR DIR IHN IHM UNS EUCH MEIN MEINE MEINEN MEINEM MEINER DEIN DEINE DEINEN DEINEM DEINER SEIN SEINE SEINEN SEINEM SEINER UNSER UNSERE UNSEREN UNSEREM UNSERER NICHT KEIN KEINE KEINEN KEINEM KEINER HAT HATTE IST WAR WIRD WURDE WORDEN'.split(' '),
+    sentences: [
+      'Als der Leuchtturm erlosch verloren die Schiffe den Weg zur Küste und die Besatzung blickte auf einen Himmel ohne Sterne.',
+      'Der Wächter lebte allein auf einer Insel zwischen dem Nebel aber er wusste dass sein Licht die einzige Hoffnung der Seeleute war.',
+      'Niemand im Dorf wollte über das sprechen was mit den Männern geschah die in jener Nacht aufs Meer hinausfuhren.',
+      'Sie sagte dass sie nicht nach Hause zurückkehren würde bis die Wahrheit ans Licht käme.',
+      'Meine Eltern erzählten mir dass der Leuchtturm von einem Mann gebaut wurde der weder den Karten noch den Sternen vertraute.',
+      'Der Kapitän wusste dass wir von dieser Insel nicht zurückkehren würden und er hielt das Licht des Leuchtturms trotzdem für uns.',
+    ],
+  },
   fr: {
-    never: "LE LA LES UN UNE DES DU AU AUX DE À EN DANS SUR SOUS PAR POUR AVEC SANS CHEZ ENTRE VERS ET OU MAIS NI CAR QUE SI QUAND COMME CE CES MON MA MES SON SA SES LEUR NOS JE TU IL ILS ON ME TE SE NE QUI EST ÉTAIT QU'IL QU’IL QU'ON QU’ON D'UN D’UN D'UNE D’UNE C'EST C’EST S'EST S’EST J'AI J’AI N'A N’A N'EST N’EST".split(' '),
+    never: "LE LA LES UN UNE DES DU AU AUX DE À EN DANS SUR SOUS PAR POUR AVEC SANS CHEZ ENTRE VERS ET OU MAIS NI CAR QUE SI QUAND COMME CE CES MON MA MES SON SA SES LEUR NOS JE TU IL ILS ON ME TE SE NE QUI EST ÉTAIT QU'IL QU'IL QU'ON QU'ON D'UN D'UN D'UNE D'UNE C'EST C'EST S'EST S'EST J'AI J'AI N'A N'A N'EST N'EST".split(' '),
     sentences: [
       "Quand le phare s'est éteint les bateaux ont perdu le chemin vers la côte et l'équipage a regardé un ciel sans étoiles.",
       "Le gardien vivait seul sur une île entre la brume mais il savait que sa lumière était le seul espoir des marins.",
       "Personne dans le village n'a voulu parler de ce qui est arrivé aux hommes qui sont partis en mer cette nuit-là.",
-      "Elle a dit qu’elle ne rentrerait pas à la maison avant que la vérité n’éclate au grand jour.",
-      "Mes parents m’ont raconté que le phare a été construit par un homme qui ne faisait confiance ni aux cartes ni aux étoiles.",
-      "Selon le journal le capitaine nous a dit que les marins restaient sur le bateau ou se perdaient dans les vagues d’une mer sans fin.",
+      "Elle a dit qu'elle ne rentrerait pas à la maison avant que la vérité n'éclate au grand jour.",
+      "Mes parents m'ont raconté que le phare a été construit par un homme qui ne faisait confiance ni aux cartes ni aux étoiles.",
+      "Selon le journal le capitaine nous a dit que les marins restaient sur le bateau ou se perdaient dans les vagues d'une mer sans fin.",
       "Il savait qu'on ne reviendrait pas de cette île et c'est pour ça qu'il gardait la lumière d'un phare qu'on avait oublié.",
-      "Il savait qu’on ne reviendrait pas de cette île et c’est pour ça qu’il gardait la lumière d’un phare qu’on avait oublié.",
+      "Il savait qu'on ne reviendrait pas de cette île et c'est pour ça qu'il gardait la lumière d'un phare qu'on avait oublié.",
     ],
   },
 };
