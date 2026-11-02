@@ -7,6 +7,7 @@ import { prepare, loadConfig } from '../src/project.mjs';
 import { estimateWords, whisperWords, writeWords, scriptText } from '../src/align.mjs';
 import { mix } from '../src/mix.mjs';
 import { narrate } from '../src/tts.mjs';
+import { writeCaptionFiles } from '../src/subtitles.mjs';
 import { stills, sheet, video, gif } from '../src/render.mjs';
 import { have, run, findOnPath } from '../src/util.mjs';
 import { whisperDoctor } from '../src/whisper-model.mjs';
@@ -20,6 +21,7 @@ const HELP = `explainkit: script + narration -> vertical 2D explainer video (108
   explainkit sheet <dir> [--every 6]        contact sheet of the whole video -> out/sheet.jpg
   explainkit render <dir> [--from 0 --to 10]   render the video (or a section) from what is already in out/
   explainkit gif <dir> --from 2 --to 8      animated GIF of a section -> out/preview.gif
+  explainkit srt <dir>                      the video's captions as files -> out/captions.srt and out/captions.vtt
   explainkit align <dir> [--engine estimate|whisper] [--model ggml.bin]   write out/words.json
   explainkit mix <dir>                      write out/audio-final.m4a
   explainkit tts <dir> --engine kokoro|command [--voice af_heart] [--cmd "..."]   make narration.wav from the script
@@ -111,6 +113,12 @@ async function main() {
     case 'gif': {
       const d = prepare(dir, overrides()); const f = await gif(d, path.resolve(v.out || path.join(out, 'preview.gif')), { from: num(v.from, 0), to: num(v.to, 6), width: num(v.width, 300), fps: num(v.fps, 12) });
       return console.log(`gif -> ${f}`);
+    }
+    case 'srt': {
+      const d = prepare(dir, overrides()), r = writeCaptionFiles(d.caps, out), rel = f => path.relative(process.cwd(), f);
+      console.log(`${r.count} captions -> ${rel(r.srt)}, ${rel(r.vtt)} (timings: ${d.source})${r.skipped ? `, ${r.skipped} left out (no text or no length)` : ''}`);
+      if (d.source !== 'file') console.log('note: no words file found, so these timings are estimates and can drift from the voice by a few tenths of a second. For exact times: explainkit align <dir> --engine whisper --model ggml.bin, then run srt again.');
+      return;
     }
     case 'render': case 'build': {
       if (command === 'build') { await alignStep(dir, cfg()); }
