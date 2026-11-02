@@ -6,7 +6,7 @@ import { norm } from './util.mjs';
 import { scriptText, estimateWords, readWords } from './align.mjs';
 
 // words that never end a caption on their own: they move to the next caption
-const FUNCTION_WORDS = {
+export const FUNCTION_WORDS = {
   en: /^(THE|A|AN|OF|TO|IN|ON|AT|FOR|AND|OR|BUT|WITH|FROM|BY|HIS|HER|ITS|THEIR|YOUR|MY|OUR|IS|WAS|THAT|THIS|NO|NOT)$/,
   es: /^(DE|DEL|A|AL|EN|QUE|Y|EL|LA|LOS|LAS|UN|UNA|POR|PARA|CON|SU|TU|SUS|MI|SE|LO|LE|NO|MÁS)$/,
 };
@@ -82,12 +82,15 @@ export function captions(pal, cfg) {
     if (cfg.language === 'es') t = t.replace(/(\d),(\d{3})/g, '$1.$2');
     t = t.replace(/[.,;:]+$/, '');
     if (!t.replace(/[.,;:?!"']/g, '')) return; // a fix to "" removes the word
-    if (!cur) cur = { s: w.s, e: w.e, ws: [] };
-    cur.ws.push(t); cur.e = w.e;
+    if (!cur) cur = { s: w.s, e: w.e, ws: [], ts: [] };
+    cur.ws.push(t); cur.ts.push(w.s); cur.e = w.e;
     const next = pal[i + 1], punct = /[.,;:?!]$/.test(w.txt);
     const cut = punct || cur.ws.length >= 3 || cur.ws.join(' ').length > 15 || !next || next.s - w.e > .35;
     if (cut && next && !punct && cur.ws.length > 1 && FUNC.test(cur.ws[cur.ws.length - 1])) {
-      const carry = cur.ws.pop(); caps.push({ s: cur.s, e: w.s, txt: cur.ws.join(' ') }); cur = { s: w.s, e: w.e, ws: [carry] }; return;
+      let k = cur.ws.length - 1;
+      while (k > 1 && FUNC.test(cur.ws[k - 1])) k--;
+      caps.push({ s: cur.s, e: cur.ts[k], txt: cur.ws.slice(0, k).join(' ') });
+      cur = { s: cur.ts[k], e: w.e, ws: cur.ws.slice(k), ts: cur.ts.slice(k) }; return;
     }
     if (cut) { caps.push({ s: cur.s, e: next ? Math.min(next.s, cur.e + .6) : cur.e + .6, txt: cur.ws.join(' ') }); cur = null; }
   });
