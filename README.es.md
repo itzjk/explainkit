@@ -85,9 +85,9 @@ explainkit tts <dir> --engine kokoro|command [--voice af_heart] [--cmd "..."]
 explainkit doctor
 ```
 
-`project.json`: `script`, `audio`, `words`, `plan`, `scenes` (lista de archivos), `fixes` (reescriben cómo se escribe una palabra en los subtítulos: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `captions`, `pulse`, `reframes`, `labelY`, `captionY`, `tail`, `language` (`en`, `es`, `pt`, `fr`), `wordsPerSecond`.
+`project.json`: `script`, `audio`, `words`, `plan`, `scenes` (lista de archivos), `fixes` (reescriben cómo se escribe una palabra en los subtítulos: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `captions`, `pulse`, `reframes`, `labelY`, `captionY`, `tail`, `language` (`en`, `es`, `pt`, `fr`, `de`), `wordsPerSecond`.
 
-`language` es un código de dos letras y por defecto es `en`. Decide con qué palabras nunca termina un subtítulo (artículos, preposiciones, conjunciones y similares), de modo que "el" pasa al siguiente subtítulo en lugar de quedar colgado al final de este. Hay listas para `en`, `es`, `pt` y `fr`; cualquier otro código usa la lista en inglés. Con `es`, un número escrito `1,000` se muestra como `1.000`. El motor `whisper` también entrega el código a whisper.cpp como el idioma que debe transcribir, así que usa el código que este conoce: `pt`, no `pt-BR`.
+`language` es un código de dos letras y por defecto es `en`. Decide con qué palabras nunca termina un subtítulo (artículos, preposiciones, conjunciones y similares), de modo que "el" pasa al siguiente subtítulo en lugar de quedar colgado al final de este. Hay listas para `en`, `es`, `pt`, `fr` y `de`; cualquier otro código usa la lista en inglés. Con `es`, un número escrito `1,000` se muestra como `1.000`. El motor `whisper` también entrega el código a whisper.cpp como el idioma que debe transcribir, así que usa el código que este conoce: `pt`, no `pt-BR`.
 
 ## Lo que no hace
 

@@ -85,9 +85,9 @@ explainkit tts <dir> --engine kokoro|command [--voice af_heart] [--cmd "..."]
 explainkit doctor
 ```
 
-`project.json`: `script`, `audio`, `words`, `plan`, `scenes` (lista de arquivos), `fixes` (reescrevem como uma palavra aparece nas legendas: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `captions`, `pulse`, `reframes`, `labelY`, `captionY`, `tail`, `language` (`en`, `es`, `pt`, `fr`), `wordsPerSecond`.
+`project.json`: `script`, `audio`, `words`, `plan`, `scenes` (lista de arquivos), `fixes` (reescrevem como uma palavra aparece nas legendas: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `captions`, `pulse`, `reframes`, `labelY`, `captionY`, `tail`, `language` (`en`, `es`, `pt`, `fr`, `de`), `wordsPerSecond`.
 
-`language` é um código de duas letras e o padrão é `en`. Ele decide em quais palavras uma legenda nunca termina (artigos, preposições, conjunções e afins), de modo que "o" passa para a legenda seguinte em vez de ficar pendurado no fim desta. Existem listas para `en`, `es`, `pt` e `fr`; qualquer outro código usa a lista do inglês. Com `es`, um número escrito `1,000` aparece na legenda como `1.000`. O motor `whisper` também entrega o código ao whisper.cpp como o idioma a transcrever, então use o código que ele conhece: `pt`, não `pt-BR`.
+`language` é um código de duas letras e o padrão é `en`. Ele decide em quais palavras uma legenda nunca termina (artigos, preposições, conjunções e afins), de modo que "o" passa para a legenda seguinte em vez de ficar pendurado no fim desta. Existem listas para `en`, `es`, `pt`, `fr` e `de`; qualquer outro código usa a lista do inglês. Com `es`, um número escrito `1,000` aparece na legenda como `1.000`. O motor `whisper` também entrega o código ao whisper.cpp como o idioma a transcrever, então use o código que ele conhece: `pt`, não `pt-BR`.
 
 ## O que ele não faz
 
