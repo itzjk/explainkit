@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { inspectModel, findWhisperModel, findOnPath, modelsFolder, expandHome, RECOMMENDED } from '../src/whisper-model.mjs';
+import { inspectModel, findWhisperModel, findOnPath, modelsFolder, expandHome, modelHelp, cliHelp, whisperDoctor, modelUrl, RECOMMENDED } from '../src/whisper-model.mjs';
 
 const tmp = () => mkdtempSync(path.join(tmpdir(), 'ek model-'));
 const header = (vocab = 51865) => { const b = Buffer.alloc(64); b.writeUInt32LE(0x67676d6c, 0); b.writeInt32LE(vocab, 4); return b; };
@@ -85,4 +85,88 @@ test('findOnPath finds an executable on PATH and skips files that cannot run', {
 test('findOnPath on Windows tries the extensions in PATHEXT', () => {
   const bin = tmp(), file = put(path.join(bin, 'whisper-cli.exe'), 'MZ');
   assert.equal(findOnPath('whisper-cli', { env: { PATH: bin, PATHEXT: '.COM;.EXE' }, platform: 'win32' }), file);
+});
+
+
+const BASE_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin';
+
+test('nothing configured: the message names the file, where to get it, where to put it and how to point at another place', () => {
+  const home = tmp(), m = findWhisperModel({ env: {}, home });
+  const { headline, steps } = modelHelp(m, { platform: 'linux' });
+  assert.match(headline, /^no whisper model found/);
+  assert.ok(headline.includes('--model') && headline.includes('WHISPER_MODEL') && headline.includes(m.fallback));
+  assert.ok(steps.includes('ggml-base.bin (141 MiB'), steps);
+  assert.ok(steps.includes(`from   ${BASE_URL}`), steps);
+  assert.ok(steps.includes(`to     ${path.join(home, '.explainkit', 'models', 'ggml-base.bin')}`), steps);
+  assert.ok(steps.includes(`curl -L --create-dirs -o '${m.fallback}' '${BASE_URL}'`), steps);
+  assert.ok(steps.includes('--model <file>') && steps.includes('WHISPER_MODEL'), steps);
+  assert.ok(steps.includes('https://huggingface.co/ggerganov/whisper.cpp/tree/main'));
+  assert.equal(modelUrl('ggml-small.bin'), 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin');
+});
+
+test('on Windows the download command is curl.exe with double quotes', () => {
+  const m = findWhisperModel({ env: {}, home: tmp() });
+  const { steps } = modelHelp(m, { platform: 'win32' });
+  assert.ok(steps.includes(`curl.exe -L --create-dirs -o "${m.fallback}" "${BASE_URL}"`), steps);
+});
+
+test('every kind of wrong file gets its own explanation and says whether --model or WHISPER_MODEL pointed at it', () => {
+  const home = tmp(), d = tmp(), cases = {
+    folder: d,
+    empty: put(path.join(d, 'empty.bin'), ''),
+    'lfs-pointer': put(path.join(d, 'lfs.bin'), 'version https://git-lfs.github.com/spec/v1\n'),
+    'web-page': put(path.join(d, 'page.bin'), '<html></html>'),
+    'not-ggml': put(path.join(d, 'other.bin'), Buffer.alloc(100, 1)),
+    missing: path.join(d, 'gone.bin'),
+  };
+  const words = { folder: /is a folder/, empty: /is empty/, 'lfs-pointer': /Git LFS pointer/, 'web-page': /saved web page/, 'not-ggml': /not a whisper.cpp ggml model/, missing: /does not exist/ };
+  for (const [problem, file] of Object.entries(cases)) {
+    const viaFlag = findWhisperModel({ flag: file, env: {}, home }), viaEnv = findWhisperModel({ env: { WHISPER_MODEL: file }, home });
+    assert.equal(viaFlag.problem, problem);
+    const a = modelHelp(viaFlag).headline, b = modelHelp(viaEnv).headline;
+    assert.match(a, words[problem]); assert.match(b, words[problem]);
+    assert.ok(a.includes('--model') && a.includes(file), a);
+    assert.ok(b.includes('WHISPER_MODEL') && b.includes(file), b);
+    assert.ok(modelHelp(viaFlag).steps.includes(BASE_URL));
+  }
+  const english = put(path.join(d, 'ggml-base.en.bin'), header(51864));
+  const h = modelHelp(findWhisperModel({ flag: english, env: {}, home, language: 'es' })).headline;
+  assert.ok(/English-only model but the project language is "es"/.test(h), h);
+});
+
+test('when the folder already has other models, the message offers the exact --model to use', () => {
+  const home = tmp(), small = put(path.join(modelsFolder(home), 'ggml-small.bin'), header());
+  const { steps } = modelHelp(findWhisperModel({ env: {}, home }), { platform: 'linux' });
+  assert.ok(steps.includes(`Models already in ${modelsFolder(home)}: ggml-small.bin`) && steps.includes(`--model '${small}'`), steps);
+});
+
+test('cliHelp says how to get whisper-cli on macOS and elsewhere', () => {
+  assert.match(cliHelp({ platform: 'darwin' }), /brew install whisper\.cpp/);
+  assert.match(cliHelp({ platform: 'linux' }), /cmake -B build.*cmake --build build -j --config Release/);
+  assert.match(cliHelp({ platform: 'linux' }), /github\.com\/ggml-org\/whisper\.cpp/);
+});
+
+test('doctor: nothing installed is information with instructions, not a failure', () => {
+  const home = tmp(), r = whisperDoctor({ env: { PATH: tmp() }, home, platform: 'linux' });
+  assert.equal(r.failed, false);
+  const text = r.lines.join('\n');
+  assert.match(r.lines[0], /^info whisper-cli: not found/);
+  assert.ok(r.lines.some(l => l.startsWith('info whisper model: no whisper model found')), text);
+  assert.ok(text.includes(BASE_URL) && text.includes(path.join(home, '.explainkit', 'models', 'ggml-base.bin')), text);
+});
+
+test('doctor: a model you configured that does not work is a failure; the default folder being empty is not', () => {
+  const home = tmp(), env = { PATH: tmp(), WHISPER_MODEL: path.join(tmp(), 'typo.bin') };
+  const bad = whisperDoctor({ env, home, platform: 'linux' });
+  assert.equal(bad.failed, true);
+  assert.ok(bad.lines.some(l => l.startsWith('FAIL whisper model: WHISPER_MODEL points to a file that does not exist')), bad.lines.join('\n'));
+  assert.equal(whisperDoctor({ env: { PATH: tmp() }, home, platform: 'linux' }).failed, false);
+});
+
+test('doctor: whisper-cli and a good model are both reported as ok, with the path and size', { skip: process.platform === 'win32' }, () => {
+  const home = tmp(), bin = tmp(), cli = put(path.join(bin, 'whisper-cli'), '#!/bin/sh\n'); chmodSync(cli, 0o755);
+  const model = put(path.join(modelsFolder(home), 'ggml-base.bin'), header());
+  const r = whisperDoctor({ env: { PATH: bin }, home, platform: process.platform });
+  assert.deepEqual(r.lines, [`ok   whisper-cli: ${cli}`, `ok   whisper model: ${model} (0 MiB, any language, from the models folder)`]);
+  assert.equal(r.failed, false);
 });

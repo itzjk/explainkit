@@ -28,3 +28,6 @@ export function have(cmd) {
   const r = spawnSync(cmd, ['-version'], { encoding: 'utf8' });
   return !r.error && r.status === 0;
 }
+
+// one argument for a shell command line: single quotes for sh, double quotes for cmd.exe
+export const shellQuote = (s, platform = process.platform) => platform === 'win32' ? `"${s}"` : `'${String(s).replaceAll("'", `'\\''`)}'`;

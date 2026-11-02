@@ -6,10 +6,11 @@
 //             duration when there is no audio). Good for storyboards and drafts, can drift by a few tenths of a second.
 //   whisper   whisper.cpp (`whisper-cli`) with a ggml model you downloaded yourself. Exact word times.
 //   file      bring your own words.json (any tool), or whisper.cpp JSON: it is detected and converted.
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { run, ffmpeg, duration, norm } from './util.mjs';
+import { findWhisperModel, findOnPath, modelHelp, cliHelp, modelUrl, RECOMMENDED } from './whisper-model.mjs';
 
 export const DEFAULT_WPS = 2.6; // words per second of a calm narrator, used when there is no audio to measure
 
@@ -72,14 +73,21 @@ export function readWords(file) {
   return words.filter(w => norm(w.text));
 }
 
-export function whisperWords(audio, { model = process.env.WHISPER_MODEL, language = 'en' } = {}) {
-  if (!model || !existsSync(model)) throw new Error('whisper engine needs a ggml model file: pass --model /path/ggml-base.bin or set WHISPER_MODEL (download one from the whisper.cpp project)');
+export function whisperWords(audio, { model, language = 'en', env = process.env, home } = {}) {
+  const found = findWhisperModel({ flag: model, env, home, language }), cli = findOnPath('whisper-cli', { env });
+  const problems = [];
+  if (!cli) problems.push(cliHelp());
+  if (!found.ok) { const h = modelHelp(found); problems.push(`${h.headline}\n${h.steps}`); }
+  if (problems.length) throw new Error(problems.join('\n\n'));
   const tmp = mkdtempSync(path.join(tmpdir(), 'explainkit-'));
   try {
     ffmpeg(['-i', audio, '-ar', '16000', '-ac', '1', path.join(tmp, 'a.wav')], 'audio conversion');
     // -ml 1: one word per segment. -mc 0: no context between windows (with context whisper skipped whole sentences and times drifted)
-    const r = run('whisper-cli', ['-m', model, '-l', language, '-ml', '1', '-sow', '-mc', '0', '-oj', '-of', path.join(tmp, 'p'), '-np', '-t', '4', path.join(tmp, 'a.wav')], { stdio: ['ignore', 'ignore', 'pipe'] });
-    if (r.status !== 0) throw new Error(`whisper-cli failed: ${(r.stderr || '').slice(-300)}`);
+    const r = run(cli, ['-m', found.file, '-l', language, '-ml', '1', '-sow', '-mc', '0', '-oj', '-of', path.join(tmp, 'p'), '-np', '-t', '4', path.join(tmp, 'a.wav')], { stdio: ['ignore', 'ignore', 'pipe'] });
+    if (r.status !== 0) {
+      const tail = (r.stderr || '').slice(-300);
+      throw new Error(`whisper-cli failed: ${tail}${/model|tensor|magic/i.test(tail) ? `\nThe model file may be damaged or incomplete: ${found.file} is ${found.bytes} bytes, ${RECOMMENDED.file} is ${RECOMMENDED.bytes}. Download it again from ${modelUrl(RECOMMENDED.file)}` : ''}`);
+    }
     return readWords(path.join(tmp, 'p.json'));
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 }

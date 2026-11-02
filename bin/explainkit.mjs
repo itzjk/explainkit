@@ -9,6 +9,7 @@ import { mix } from '../src/mix.mjs';
 import { narrate } from '../src/tts.mjs';
 import { stills, sheet, video, gif } from '../src/render.mjs';
 import { have, run } from '../src/util.mjs';
+import { whisperDoctor } from '../src/whisper-model.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HELP = `explainkit: script + narration -> vertical 2D explainer video (1080x1920, 30 fps), all on your machine.
@@ -22,7 +23,7 @@ const HELP = `explainkit: script + narration -> vertical 2D explainer video (108
   explainkit align <dir> [--engine estimate|whisper] [--model ggml.bin]   write out/words.json
   explainkit mix <dir>                      write out/audio-final.m4a
   explainkit tts <dir> --engine kokoro|command [--voice af_heart] [--cmd "..."]   make narration.wav from the script
-  explainkit doctor                         check ffmpeg, Chromium, fonts
+  explainkit doctor                         check ffmpeg, Chromium, fonts, and the whisper model if you use it
 
 Common options: --audio <file> uses that narration instead of project.json's "audio".
 Docs: README.md`;
@@ -61,7 +62,7 @@ function doctor() {
   }
   ok(have('ffprobe'), 'ffprobe on PATH', 'it ships with ffmpeg');
   for (const f of ['barlow-condensed-latin-700-normal.woff2', 'barlow-latin-400-normal.woff2', 'jetbrains-mono-latin-400-normal.woff2']) ok(existsSync(path.join(ROOT, 'fonts', f)), `font ${f}`, 'fonts/ folder is incomplete');
-  console.log(`info whisper-cli: ${have('whisper-cli') ? 'found (exact word timings available)' : 'not found (optional: estimate engine works without it)'}`);
+  const w = whisperDoctor(); w.lines.forEach(l => console.log(l)); if (w.failed) bad++;
   return import('playwright').then(async ({ chromium }) => {
     try { const b = await chromium.launch(); await b.close(); ok(true, 'Chromium launches'); }
     catch { ok(false, 'Chromium launches', 'npx playwright install chromium'); }
