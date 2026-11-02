@@ -25,6 +25,7 @@ npm test        # unit tests + renders every example (about 1-2 minutes)
 |---|---|
 | `src/runtime/` | what runs in the browser: `draw.js` helpers, `character.js`, `scenes.js`, `overlay.js` (reframes, label, captions, pulse) |
 | `src/project.mjs` | script + timings + plan -> shots and captions |
+| `src/output.mjs` | video sizes (9:16, 4:5, 1:1): the crop of the stage and where the label, captions and pulse go |
 | `src/align.mjs` | word timings (estimate, whisper.cpp, files) |
 | `src/mix.mjs`, `src/synth.mjs` | soundtrack |
 | `src/render.mjs` | Chromium + ffmpeg |
@@ -34,7 +35,7 @@ npm test        # unit tests + renders every example (about 1-2 minutes)
 
 ## Adding a scene to the built-in library
 
-Put it in `src/runtime/scenes.js` as `ESC.name = (p, P, T) => ...`, document the params in a comment above it, and add a still of it to the PR description (`explainkit frames`). Keep text out of scenes unless it comes from `P`, so it works in any language.
+Put it in `src/runtime/scenes.js` as `ESC.name = (p, P, T) => ...`, document the params in a comment above it, and add a still of it to the PR description (`explainkit frames`). Keep text out of scenes unless it comes from `P`, so it works in any language. Scenes draw the 1080x1920 stage, but 4:5 and 1:1 videos keep only the middle of it (README, Output sizes): keep what matters in rows 420 to 1499 so it survives every size.
 
 ## Adding an example
 

@@ -2,7 +2,7 @@
 
 # explainkit
 
-**Turn a script and a narration into a vertical 2D explainer video (1080x1920, 30 fps) with shots, word-by-word captions and a mixed soundtrack. Everything runs on your machine. MIT licensed.**
+**Turn a script and a narration into a vertical 2D explainer video (1080x1920, 30 fps; 4:5 and 1:1 too) with shots, word-by-word captions and a mixed soundtrack. Everything runs on your machine. MIT licensed.**
 
 ![A steel boat flips over, then a keel brings it back upright](docs/boat.gif) ![A lighthouse keeper at a door, the knocking starts](docs/lighthouse.gif) ![A ship trapped in the ice, silhouettes](docs/endurance.gif)
 
@@ -63,7 +63,7 @@ mix.json + your music ─► mix (duck under voice, -14 LUFS) ─► audio-final
    - `estimate` (default): spreads your words over the speech it finds in the audio, or over a reading-speed duration when there is no audio. On one 42-word test narration it was off by 0.25 s on average and 0.66 s at worst against whisper (measured Oct 31, 2026, one voice: treat it as a draft, not a guarantee).
    - `whisper`: `--engine whisper` uses [whisper.cpp](https://github.com/ggml-org/whisper.cpp) for exact word times. It needs `whisper-cli` and one model file that you download yourself: see [Exact word times](#exact-word-times-whispercpp).
    - bring your own `words.json`, or whisper.cpp JSON: both are read.
-3. **Scenes.** A scene is a function `ESC.name = (p, P, T) => { ... }` that draws a whole shot on a 1080x1920 canvas: `p` is progress through the shot (0 to 1), `P` its params, `T` the absolute time. The same `T` always gives the same frame, so you can check any second without rendering the video (`explainkit frames`). `src/runtime/draw.js` has the drawing helpers (backgrounds, glow, stars, city skyline, clock, phone, speech bubble...), `character.js` an articulated character with eight expressions, `scenes.js` a few generic scenes (`title`, `face`, `dialogue`, `calendar`, `sunrise`...).
+3. **Scenes.** A scene is a function `ESC.name = (p, P, T) => { ... }` that draws a whole shot on the 1080x1920 stage (4:5 and 1:1 videos keep the middle of it, see [Output sizes](#output-sizes)): `p` is progress through the shot (0 to 1), `P` its params, `T` the absolute time. The same `T` always gives the same frame, so you can check any second without rendering the video (`explainkit frames`). `src/runtime/draw.js` has the drawing helpers (backgrounds, glow, stars, city skyline, clock, phone, speech bubble...), `character.js` an articulated character with eight expressions, `scenes.js` a few generic scenes (`title`, `face`, `dialogue`, `calendar`, `sunrise`...).
 4. **Overlay.** Long shots re-frame every 2.3 s so a still scene still reads as cuts. Captions are 1-3 words, cut at punctuation and pauses, and never leave a word like "the" alone at the end. Optional heart-rate monitor (`"pulse": true`).
 5. **Voice.** A voice is an audio file you provide. Optional adapters: `explainkit tts --engine command --cmd 'espeak-ng -f {in} -w {out}'` for any text-to-speech program, `--engine piper` for the fast local Piper voice with no Python ([docs/piper.md](docs/piper.md): what to download, the voice license, the exact command), or `--engine kokoro` for the open Kokoro-82M voice through the optional `kokoro-js` package (the model downloads on first use, about 90 MB, from Hugging Face). Check the license of whatever voice you use before you publish. The Kokoro adapter follows the package's documented API but has not been run end to end by the maintainers yet ([#14](https://github.com/itzjk/explainkit/issues/14)); the `command` adapter and the audio-file path are the verified ones. The Piper preset is tested against a stand-in program that follows Piper's options, not yet against a real Piper.
 6. **Sound.** `mix.json` lists music tracks and hit sounds. Music ducks under the voice with sidechain compression and the result is normalized to -14 LUFS (a 42-second example measured -14.3 LUFS). Built-in `synth:pad`, `synth:drone`, `synth:boom`, `synth:tick` and `synth:rise` are computed from sine waves and noise, so there is no audio to license: bring your own tracks when you want real music, and only use music you have the rights to. This repository contains no recorded audio.
@@ -91,6 +91,24 @@ Keeping the model somewhere else? Pass `--model /path/to/ggml-base.bin` or set t
 
 When the file is wrong (a folder, empty, a saved web page, a Git LFS pointer, not a ggml model), the error says which of those it is and repeats the steps above. The models whose names contain `.en` only understand English, so explainkit refuses them for a project whose `language` is not `en`. Bigger models (`small`, `medium`) hear more words correctly and take longer; all of them are listed at [huggingface.co/ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp/tree/main).
 
+## Output sizes
+
+The default is 1080x1920 (9:16). For feeds, set `"output"` in `project.json`, or pass `--output` to any command (the flag wins over the file):
+
+| `output` | Video | Part of the 1080x1920 stage that is kept | Label, captions, pulse monitor (pixels from the top of the video) |
+|---|---|---|---|
+| `9:16` (default) | 1080x1920 | all of it | 300, 1395, 1700 |
+| `4:5` | 1080x1350 | rows 285 to 1634 | 220, 1110, 44 |
+| `1:1` | 1080x1080 | rows 420 to 1499 | 220, 936, 44 |
+
+The pixel size (`1080x1350`) works in place of the ratio. Any other value is an error that lists the accepted ones.
+
+**What is cropped.** Scenes keep drawing on the 1080x1920 stage. A 4:5 or 1:1 video is the middle band of that stage at full width, copied pixel for pixel (nothing is scaled), so whatever a scene draws above or below the band is cut: 285 rows at the top and at the bottom for 4:5, 420 for 1:1. Keep what matters in rows 420 to 1499 and it survives every size. In the examples the cut shows in a few shots, for instance: the DAY tag and the clock in `lighthouse` (both sizes), its `KNOCK` bubble (cut in half in 4:5, gone in 1:1) and its `YOUR CALL` headline (clipped in 1:1); the title of the density chart in `boat` (both sizes), whose steel bar and `7.85` value also run past the top in 1:1, and the `PROBLEM` and `FIX` card headings in 1:1; the date tag in `endurance` (a sliver in 4:5, gone in 1:1).
+
+**What is not cropped.** The label, the captions and the pulse monitor are not part of the stage: they are drawn on the cropped frame, so they are always fully inside it. Captions keep the stage row they have in 9:16 (1395) in 4:5, so they sit against the scenes the way the scenes were composed, and sit 80 px above the bottom edge in 1:1. In the feed sizes the pulse monitor moves to the top right corner because there is no room under the captions. The vignette is scaled to the frame. Reframes (the zoom every 2.3 s) happen on the stage before the crop, around its center, which is also the center of the band.
+
+`labelY` and `captionY` are pixels from the top of the video, so a project that sets them for 9:16 needs new values for another size. A value that would cut the text is refused, with the range that fits. The video is written to `out/video.mp4` whatever its size: move it away before you build another size of the same project.
+
 ## Commands
 
 ```
@@ -107,7 +125,9 @@ explainkit tts <dir> --engine kokoro|piper|command [--voice af_heart|voice.onnx]
 explainkit doctor
 ```
 
-`project.json`: `script`, `audio`, `words`, `plan`, `scenes` (list of files), `fixes` (rewrite how a word is captioned: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `captions`, `pulse`, `reframes`, `labelY`, `captionY`, `tail`, `language` (`en`, `es`, `pt`, `fr`), `wordsPerSecond`.
+Every command that reads a project also takes `--output 9:16|4:5|1:1` (see [Output sizes](#output-sizes)).
+
+`project.json`: `script`, `audio`, `words`, `plan`, `scenes` (list of files), `fixes` (rewrite how a word is captioned: `{ "from": "foo", "to": "FOO", "wholeWord": true, "times": 1 }`), `output` (`9:16`, `4:5` or `1:1`), `captions`, `pulse`, `reframes`, `labelY` and `captionY` (pixels from the top of the video, the defaults depend on `output`), `tail`, `language` (`en`, `es`, `pt`, `fr`), `wordsPerSecond`.
 
 `language` is a two-letter code and defaults to `en`. It decides which words a caption never ends on (articles, prepositions, conjunctions and the like), so "the" moves to the next caption instead of hanging at the end of this one. Lists exist for `en`, `es`, `pt` and `fr`; any other code uses the English list. With `es`, a number written `1,000` is captioned `1.000`. The `whisper` engine also hands the code to whisper.cpp as the language to transcribe, so use the code it knows: `pt`, not `pt-BR`.
 
