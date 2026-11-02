@@ -2,6 +2,7 @@
 // The renderer calls window.render(t) for every frame; DATA is loaded by render.mjs through window.load().
 // Scenes draw the 1080x1920 stage. For 4:5 and 1:1 its middle is copied into a smaller frame, and the vignette, label,
 // captions and pulse are drawn on that frame (see src/output.mjs).
+const C_HI = '#ffd166'; // accent color for *marked* words in captions
 let DATA = null, STAGE_CTX = null, FRAME_CTX = null;
 window.load = d => {
   DATA = d;
@@ -28,7 +29,19 @@ function caption(t) {
   ctx.save(); ctx.translate(DATA.config.layout.width / 2, DATA.config.layout.captionY); ctx.scale(s, s);
   ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 18;
   let size = 96; ctx.font = `bold ${size}px ${FONT}`; while (ctx.measureText(c.txt).width > 900) { size -= 4; ctx.font = `bold ${size}px ${FONT}`; }
-  text(c.txt, 0, 0, size, C.white, { outline: 16 });
+  if (c.hi == null) {
+    text(c.txt, 0, 0, size, C.white, { outline: 16 });
+  } else {
+    const sp = ctx.measureText(' ').width;
+    const wds = c.txt.split(' ');
+    const ws = wds.map(w => ctx.measureText(w).width);
+    const total = ws.reduce((a, b) => a + b, 0) + sp * (wds.length - 1);
+    let x = -total / 2;
+    wds.forEach((w, k) => {
+      text(w, x, 0, size, k === c.hi ? C_HI : C.white, { outline: 16, align: 'left' });
+      x += ws[k] + sp;
+    });
+  }
   ctx.restore();
 }
 function pulse(t, bpm) {
