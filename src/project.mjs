@@ -72,7 +72,7 @@ export function prepare(dir, overrides = {}) {
   }
   shots[0].s = 0;
   shots.forEach((sh, i) => { sh.e = i + 1 < shots.length ? shots[i + 1].s : end; });
-  return { shots, caps: captions(pal, cfg), fin: end, source, layout: cfg.layout, config: { captions: cfg.captions, pulse: cfg.pulse, reframes: cfg.reframes, layout: cfg.layout }, sceneFiles: cfg.sceneFiles, cfg };
+  return { shots, caps: captions(pal, cfg), fin: end, source, layout: cfg.layout, config: { captions: cfg.captions, pulse: cfg.pulse, reframes: cfg.reframes, layout: cfg.layout }, sceneFiles: cfg.sceneFiles, cfg, words: raw };
 }
 
 // captions: 1-3 words, cut at punctuation, at pauses longer than 0.35 s and past 15 characters

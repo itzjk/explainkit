@@ -104,7 +104,7 @@ async function main() {
   switch (command) {
     case 'align': return alignStep(dir, cfg());
     case 'mix': {
-      const d = prepare(dir, overrides()); const r = mix(dir, { voice: d.cfg.audioFile, total: d.fin });
+      const d = prepare(dir, overrides()); const r = mix(dir, { voice: d.cfg.audioFile, total: d.fin, words: d.words });
       return console.log(`audio ${r.seconds.toFixed(1)} s -> ${r.file}`);
     }
     case 'tts': {
@@ -133,7 +133,7 @@ async function main() {
       if (command === 'build') { await alignStep(dir, cfg()); }
       const d = prepare(dir, overrides());
       console.log(`${d.shots.length} shots, ${d.caps.length} captions, ${d.fin.toFixed(1)} s (timings: ${d.source})`);
-      const m = command === 'build' || !existsSync(path.join(out, 'audio-final.m4a')) ? mix(dir, { voice: d.cfg.audioFile, total: d.fin }) : { file: path.join(out, 'audio-final.m4a') };
+      const m = command === 'build' || !existsSync(path.join(out, 'audio-final.m4a')) ? mix(dir, { voice: d.cfg.audioFile, total: d.fin, words: d.words }) : { file: path.join(out, 'audio-final.m4a') };
       const r = await video(d, out, { audio: m.file, from: num(v.from, 0), to: num(v.to, d.fin) });
       return console.log(`done: ${r.file}${d.cfg.audioFile ? '' : '\nnote: no narration audio found, so this has music only and estimated timings. Add narration.mp3 (see README) and run build again.'}`);
     }
