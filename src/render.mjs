@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { run, ffmpeg } from './util.mjs';
+import { guideRects } from './guides.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const FPS = 30;
@@ -31,11 +32,16 @@ export async function openStage(datos) {
     return faces.map(f => document.fonts.check(f));
   }, FACES);
   if (fontsOk.includes(false)) throw new Error('the bundled fonts did not load (fonts/ folder missing or moved?)');
-  const frame = (t, mark, type = 'image/jpeg') => page.evaluate(([t, mark, type]) => {
+  const frame = (t, { mark = null, guides = null, type = 'image/jpeg' } = {}) => page.evaluate(([t, mark, guides, type]) => {
     window.render(t);
-    if (mark) { ctx.setTransform(1, 0, 0, 1, 0, 0); rrect(16, 16, 250, 96, 14, 'rgba(0,0,0,.75)', null); text(mark, 141, 70, 80, '#ffd166'); }
+    if (guides || mark) ctx.setTransform(1, 0, 0, 1, 0, 0);
+    for (const z of guides || []) {
+      ctx.fillStyle = 'rgba(255, 70, 70, .32)'; ctx.fillRect(z.x, z.y, z.width, z.height);
+      if (z.label) text(z.label, z.x + z.width / 2, z.y + z.height / 2, 56, '#ffffff', { outline: 8 });
+    }
+    if (mark) { rrect(16, 16, 250, 96, 14, 'rgba(0,0,0,.75)', null); text(mark, 141, 70, 80, '#ffd166'); }
     return document.getElementById('c').toDataURL(type, .92);
-  }, [t, mark, type]).then(u => Buffer.from(u.split(',')[1], 'base64'));
+  }, [t, mark, guides, type]).then(u => Buffer.from(u.split(',')[1], 'base64'));
   return { frame, errors, page, close: () => browser.close() };
 }
 
@@ -46,10 +52,11 @@ function encoder(args, output) {
   return { write: async buf => { if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r)); }, end: () => { ff.stdin.end(); return done; } };
 }
 
-export async function stills(datos, outDir, seconds) {
+export async function stills(datos, outDir, seconds, { guides = false } = {}) {
+  const zones = guides ? guideRects(datos.layout) : null;
   const st = await openStage(datos); mkdirSync(outDir, { recursive: true }); const files = [];
   try {
-    for (const s of seconds) { const f = path.join(outDir, `t${String(s).padStart(4, '0')}.jpg`); writeFileSync(f, await st.frame(s)); files.push(f); }
+    for (const s of seconds) { const f = path.join(outDir, `t${String(s).padStart(4, '0')}${guides ? '-guides' : ''}.jpg`); writeFileSync(f, await st.frame(s, { guides: zones })); files.push(f); }
   } finally { report(st.errors); await st.close(); }
   return files;
 }
@@ -59,7 +66,7 @@ export async function sheet(datos, outDir, every = 6) {
   const st = await openStage(datos), tmp = path.join(outDir, 'sheet-frames');
   rmSync(tmp, { recursive: true, force: true }); mkdirSync(tmp, { recursive: true });
   let n = 0;
-  try { for (let t = .5; t < datos.fin; t += every) writeFileSync(path.join(tmp, `${String(n++).padStart(4, '0')}.jpg`), await st.frame(t, `${t.toFixed(1)} s`)); }
+  try { for (let t = .5; t < datos.fin; t += every) writeFileSync(path.join(tmp, `${String(n++).padStart(4, '0')}.jpg`), await st.frame(t, { mark: `${t.toFixed(1)} s` })); }
   finally { report(st.errors); await st.close(); }
   const cols = 8, file = path.join(outDir, 'sheet.jpg');
   ffmpeg(['-framerate', '1', '-i', path.join(tmp, '%04d.jpg'), '-vf', `scale=270:-2,tile=${cols}x${Math.ceil(n / cols)}`, '-frames:v', '1', file], 'contact sheet');

@@ -17,7 +17,7 @@ const HELP = `explainkit: script + narration -> vertical 2D explainer video (108
 
   explainkit new <dir>                      create a starter project
   explainkit build <dir> [--audio file]     timings + mix + render: out/video.mp4 (silent narration track if no audio)
-  explainkit frames <dir> --at 3,40,95      stills at those seconds -> out/stills/
+  explainkit frames <dir> --at 3,40,95 [--guides]   stills at those seconds -> out/stills/ (--guides tints the platform UI zones, on stills only)
   explainkit sheet <dir> [--every 6]        contact sheet of the whole video -> out/sheet.jpg
   explainkit render <dir> [--from 0 --to 10]   render the video (or a section) from what is already in out/
   explainkit gif <dir> --from 2 --to 8      animated GIF of a section -> out/preview.gif
@@ -35,7 +35,7 @@ Docs: README.md`;
 const { values: v, positionals: pos } = parseArgs({ allowPositionals: true, options: {
   audio: { type: 'string' }, at: { type: 'string' }, every: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' },
   engine: { type: 'string' }, model: { type: 'string' }, voice: { type: 'string' }, cmd: { type: 'string' }, 'piper-bin': { type: 'string' }, 'piper-config': { type: 'string' }, width: { type: 'string' },
-  fps: { type: 'string' }, out: { type: 'string' }, output: { type: 'string' }, help: { type: 'boolean', short: 'h' } } });
+  fps: { type: 'string' }, out: { type: 'string' }, output: { type: 'string' }, guides: { type: 'boolean' }, help: { type: 'boolean', short: 'h' } } });
 const [command, arg] = pos;
 const dirOf = () => { if (!arg) fail(`usage: explainkit ${command} <project-folder>`); return path.resolve(arg); };
 const overrides = () => ({ ...(v.audio ? { audio: path.resolve(v.audio) } : {}), ...(v.output !== undefined ? { output: v.output } : {}) });
@@ -89,6 +89,7 @@ function scaffold(dir) {
 
 async function main() {
   if (!command || v.help || command === 'help') return console.log(HELP);
+  if (v.guides && command !== 'frames') fail('--guides only works with frames: the zones are for looking at stills and are never drawn into a video, a sheet or a gif');
   if (command === 'doctor') return doctor();
   if (command === 'new') { if (!arg) fail('usage: explainkit new <dir>'); return scaffold(path.resolve(arg)); }
   const dir = dirOf(), out = path.join(dir, 'out');
@@ -106,7 +107,7 @@ async function main() {
     }
     case 'frames': {
       const d = prepare(dir, overrides()); const secs = (v.at || '1').split(',').map(Number);
-      const files = await stills(d, path.join(out, 'stills'), secs); return files.forEach(f => console.log(f));
+      const files = await stills(d, path.join(out, 'stills'), secs, { guides: v.guides }); return files.forEach(f => console.log(f));
     }
     case 'sheet': {
       const d = prepare(dir, overrides()); const r = await sheet(d, out, num(v.every, 6)); return console.log(`${r.frames} frames -> ${r.file}`);
