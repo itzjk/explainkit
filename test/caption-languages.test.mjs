@@ -23,6 +23,19 @@ const CASES = {
       'Según el diario el capitán nos dijo que los marineros o se quedaban en el barco o se perdían entre las olas.',
     ],
   },
+  pt: {
+    never: 'O A OS AS UM UMA AO À DO DA DOS DAS NO NA NOS NAS NUM NUMA PELO PELA PRA DE EM POR PARA COM SEM SOBRE ENTRE ATÉ E OU MAS NEM QUE SE COMO QUANDO PORQUE MEU MINHA SEU SUA ME TE LHE NÃO MAIS TÃO É ERA FOI ESTE ESSA NESTE DESSA'.split(' '),
+    sentences: [
+      'Quando o farol se apagou os barcos perderam o caminho para a costa e a tripulação olhou para um céu sem estrelas.',
+      'O guardião morava sozinho numa ilha entre a névoa mas sabia que a luz dele era a única esperança dos marinheiros.',
+      'Ninguém na aldeia quis falar sobre o que aconteceu com os homens que saíram ao mar naquela noite.',
+      'Ela disse que não voltaria para a casa até que a verdade viesse à tona.',
+      'Se essa história é verdade então nenhum de nós vai olhar o mar como antes.',
+      'Meus pais me contaram que o farol foi construído por um homem que não confiava nem nos mapas nem nas estrelas.',
+      'Eles voltaram pra casa porque ninguém queria ficar no escuro com a luz que já não era a mesma.',
+      'Segundo o diário o capitão nos disse que os marinheiros ou ficavam no barco ou se perdiam entre as ondas.',
+    ],
+  },
 };
 
 const spoken = sentence => sentence.split(' ').map((txt, i) => ({ txt, s: i * .3, e: i * .3 + .25 }));
