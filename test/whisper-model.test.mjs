@@ -1,0 +1,88 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { inspectModel, findWhisperModel, findOnPath, modelsFolder, expandHome, RECOMMENDED } from '../src/whisper-model.mjs';
+
+const tmp = () => mkdtempSync(path.join(tmpdir(), 'ek model-'));
+const header = (vocab = 51865) => { const b = Buffer.alloc(64); b.writeUInt32LE(0x67676d6c, 0); b.writeInt32LE(vocab, 4); return b; };
+const put = (file, data) => { mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, data); return file; };
+
+test('inspectModel accepts a ggml file and knows whether it is multilingual', () => {
+  const d = tmp();
+  assert.deepEqual(inspectModel(put(path.join(d, 'multi.bin'), header(51865))), { ok: true, bytes: 64, multilingual: true });
+  assert.equal(inspectModel(put(path.join(d, 'english.bin'), header(51864))).multilingual, false);
+});
+
+test('inspectModel names what is wrong with a file that is not a model', () => {
+  const d = tmp();
+  const problem = (name, data) => inspectModel(put(path.join(d, name), data)).problem;
+  assert.equal(inspectModel(path.join(d, 'nope.bin')).problem, 'missing');
+  assert.equal(inspectModel(d).problem, 'folder');
+  assert.equal(problem('empty.bin', ''), 'empty');
+  assert.equal(problem('lfs.bin', 'version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 147951465\n'), 'lfs-pointer');
+  assert.equal(problem('page.bin', '<!DOCTYPE html><html><body>Sign in</body></html>'), 'web-page');
+  assert.equal(problem('zip.bin', Buffer.concat([Buffer.from('PK\x03\x04'), Buffer.alloc(100)])), 'not-ggml');
+  assert.equal(problem('short.bin', header().subarray(0, 20)), 'not-ggml');
+});
+
+test('lookup order: --model, then WHISPER_MODEL, then ggml-base.bin in the models folder', () => {
+  const home = tmp(), d = tmp();
+  const byFlag = put(path.join(d, 'flag.bin'), header()), byEnv = put(path.join(d, 'env.bin'), header());
+  const byDefault = put(path.join(modelsFolder(home), RECOMMENDED.file), header());
+  const env = { WHISPER_MODEL: byEnv };
+  assert.deepEqual([findWhisperModel({ flag: byFlag, env, home }).file, findWhisperModel({ flag: byFlag, env, home }).source], [byFlag, 'flag']);
+  assert.deepEqual([findWhisperModel({ env, home }).file, findWhisperModel({ env, home }).source], [byEnv, 'env']);
+  const found = findWhisperModel({ env: {}, home });
+  assert.deepEqual([found.ok, found.file, found.source], [true, byDefault, 'default']);
+});
+
+test('a path you gave is never swapped for the default: a wrong --model is reported', () => {
+  const home = tmp(); put(path.join(modelsFolder(home), RECOMMENDED.file), header());
+  const wrong = path.join(tmp(), 'typo.bin');
+  const r = findWhisperModel({ flag: wrong, env: {}, home });
+  assert.deepEqual([r.ok, r.problem, r.source, r.file], [false, 'missing', 'flag', wrong]);
+  const viaEnv = findWhisperModel({ env: { WHISPER_MODEL: wrong }, home });
+  assert.deepEqual([viaEnv.ok, viaEnv.problem, viaEnv.source], [false, 'missing', 'env']);
+});
+
+test('nothing given and nothing downloaded: missing, with the other models that are in the folder', () => {
+  const home = tmp();
+  const none = findWhisperModel({ env: {}, home });
+  assert.deepEqual([none.ok, none.problem, none.source, none.file, none.others], [false, 'missing', 'default', path.join(modelsFolder(home), 'ggml-base.bin'), []]);
+  put(path.join(modelsFolder(home), 'ggml-small.bin'), header());
+  put(path.join(modelsFolder(home), 'notes.txt'), 'x');
+  assert.deepEqual(findWhisperModel({ env: {}, home }).others, ['ggml-small.bin']);
+});
+
+test('~ is expanded to the home folder, and a relative path is resolved from where you run the command', () => {
+  const home = tmp(), file = put(path.join(home, 'models', 'm.bin'), header());
+  assert.equal(expandHome('~/models/m.bin', home), path.join(home, 'models', 'm.bin'));
+  assert.equal(findWhisperModel({ flag: '~/models/m.bin', env: {}, home }).file, file);
+  assert.equal(expandHome('a~b', home), 'a~b');
+  assert.equal(findWhisperModel({ flag: path.join('some', 'm.bin'), env: {}, home }).file, path.resolve('some', 'm.bin'));
+});
+
+test('an English-only model is refused for any other language, a multilingual one is not', () => {
+  const home = tmp(), english = put(path.join(tmp(), 'ggml-base.en.bin'), header(51864)), multi = put(path.join(tmp(), 'ggml-base.bin'), header(51865));
+  assert.equal(findWhisperModel({ flag: english, env: {}, home, language: 'en' }).ok, true);
+  const es = findWhisperModel({ flag: english, env: {}, home, language: 'es' });
+  assert.deepEqual([es.ok, es.problem, es.language], [false, 'english-only', 'es']);
+  assert.equal(findWhisperModel({ flag: multi, env: {}, home, language: 'es' }).ok, true);
+});
+
+test('findOnPath finds an executable on PATH and skips files that cannot run', { skip: process.platform === 'win32' }, () => {
+  const bin = tmp(), other = tmp();
+  const runnable = put(path.join(bin, 'whisper-cli'), '#!/bin/sh\n'); chmodSync(runnable, 0o755);
+  put(path.join(other, 'piper'), 'not executable'); chmodSync(path.join(other, 'piper'), 0o644);
+  const env = { PATH: [other, bin].join(path.delimiter) };
+  assert.equal(findOnPath('whisper-cli', { env }), runnable);
+  assert.equal(findOnPath('piper', { env }), null);
+  assert.equal(findOnPath('whisper-cli', { env: { PATH: other } }), null);
+});
+
+test('findOnPath on Windows tries the extensions in PATHEXT', () => {
+  const bin = tmp(), file = put(path.join(bin, 'whisper-cli.exe'), 'MZ');
+  assert.equal(findOnPath('whisper-cli', { env: { PATH: bin, PATHEXT: '.COM;.EXE' }, platform: 'win32' }), file);
+});
