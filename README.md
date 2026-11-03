@@ -112,10 +112,10 @@ The pixel size (`1080x1350`) works in place of the ratio. Any other value is an 
 ## Safe-area guides
 
 ```bash
-npx explainkit frames my-video --at 5 --guides    # writes out/stills/t0005-guides.jpg
+npx explainkit frames my-video --at 5 --guides    # writes out/stills/t0005000-guides.jpg
 ```
 
-`--guides` tints the parts of a 1080x1920 frame that a full screen vertical player covers with its own interface: the top 14% (269 px), the bottom 35% (672 px) and 6% (65 px) on each side. Keep captions and labels clear of them, or check on the still that you meant to overlap. The guides exist only on stills, which are saved under another name (`t0005-guides.jpg`, next to the plain `t0005.jpg`). `build`, `render`, `sheet` and `gif` never draw them, `--guides` on any command but `frames` is an error, and a 4:5 or 1:1 project refuses it because the bands describe a 9:16 player.
+`--guides` tints the parts of a 1080x1920 frame that a full screen vertical player covers with its own interface: the top 14% (269 px), the bottom 35% (672 px) and 6% (65 px) on each side. Keep captions and labels clear of them, or check on the still that you meant to overlap. The guides exist only on stills, which are saved under another name (`t0005000-guides.jpg`, next to the plain `t0005000.jpg`). `build`, `render`, `sheet` and `gif` never draw them, `--guides` on any command but `frames` is an error, and a 4:5 or 1:1 project refuses it because the bands describe a 9:16 player.
 
 **Where the numbers come from.** Meta's Ads Guide for Instagram Reels ads ("Awareness Image Ad Specs on Instagram Reels") says to leave roughly 14% of the top, 35% of the bottom and 6% on each side free from text (read on 2026-11-01). It gives percentages, so the pixels are computed from them. They are the bands for Reels ads, which carry ad copy and a call to action. **Not verified:** that organic Reels, TikTok or YouTube Shorts cover the same bands. TikTok publishes its In-Feed safe zone as template files without numbers, and no official pixel figures for Shorts were found. Check a test upload on the platform you publish to. The three percentages are one constant, `UI_ZONES` in `src/guides.mjs`, with its sources in the comment above it.
 
