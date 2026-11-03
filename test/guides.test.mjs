@@ -71,3 +71,12 @@ test('stills with guides are written next to the plain ones under another name, 
   await assert.rejects(() => stills(prepare(BOAT, { output: '1:1' }), out, [14], { guides: true }), /need the 9:16 output/);
   assert.ok(!existsSync(path.join(out, 't0014-guides-1x1.jpg')));
 });
+
+test('still filenames with sub-second and multi-second timestamps sort in time order in a directory listing', async () => {
+  const d = prepare(BOAT), out = mkdtempSync(path.join(tmpdir(), 'ek-'));
+  const [a, b, c] = await stills(d, out, [0.7, 2.5, 10]);
+  assert.equal(path.basename(a), 't0000700.jpg');
+  assert.equal(path.basename(b), 't0002500.jpg');
+  assert.equal(path.basename(c), 't0010000.jpg');
+  assert.ok(path.basename(a) < path.basename(b) && path.basename(b) < path.basename(c));
+});
