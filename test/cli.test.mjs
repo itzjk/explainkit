@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -73,4 +73,25 @@ test('frames --guides writes the guided still and only that one; on a 4:5 projec
   const refused = cli('frames', project({ output: '4:5' }), '--at', '1', '--guides');
   assert.equal(refused.status, 1);
   assert.match(refused.stderr, /need the 9:16 output \(this project renders 4:5\)/);
+});
+
+test('build: estimates timings and says "approximate timings" when no out/words.json exists', () => {
+  const d = project();
+  const r = cli('build', d);
+  assert.match(r.stdout, /approximate timings/);
+  assert.ok(existsSync(path.join(d, 'out', 'words.json')));
+});
+
+test('build: uses existing out/words.json and says "(existing)", does not estimate', () => {
+  const d = project();
+  const words = [
+    { text: 'One', start: 0.1, end: 0.4 }, { text: 'two', start: 0.5, end: 0.7 },
+    { text: 'three.', start: 0.8, end: 1.1 }, { text: 'Four', start: 1.5, end: 1.8 },
+    { text: 'five', start: 1.9, end: 2.1 }, { text: 'six.', start: 2.2, end: 2.6 },
+  ];
+  mkdirSync(path.join(d, 'out'));
+  writeFileSync(path.join(d, 'out', 'words.json'), JSON.stringify(words));
+  const r = cli('build', d);
+  assert.match(r.stdout, /existing/);
+  assert.doesNotMatch(r.stdout, /approximate timings/);
 });
