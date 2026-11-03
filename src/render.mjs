@@ -56,7 +56,7 @@ export async function stills(datos, outDir, seconds, { guides = false } = {}) {
   const zones = guides ? guideRects(datos.layout) : null;
   const st = await openStage(datos); mkdirSync(outDir, { recursive: true }); const files = [];
   try {
-    for (const s of seconds) { const f = path.join(outDir, `t${String(s).padStart(4, '0')}${guides ? '-guides' : ''}.jpg`); writeFileSync(f, await st.frame(s, { guides: zones })); files.push(f); }
+    for (const s of seconds) { const f = path.join(outDir, `t${String(Math.round(s * 1000)).padStart(7, '0')}${guides ? '-guides' : ''}.jpg`); writeFileSync(f, await st.frame(s, { guides: zones })); files.push(f); }
   } finally { report(st.errors); await st.close(); }
   return files;
 }

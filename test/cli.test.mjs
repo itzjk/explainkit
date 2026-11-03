@@ -68,8 +68,8 @@ test('--guides is refused by every command that is not frames, before it does an
 test('frames --guides writes the guided still and only that one; on a 4:5 project it is refused before Chromium starts', () => {
   const d = project(), ok = cli('frames', d, '--at', '1', '--guides');
   assert.equal(ok.status, 0, ok.stderr);
-  assert.ok(existsSync(path.join(d, 'out', 'stills', 't0001-guides.jpg')));
-  assert.ok(!existsSync(path.join(d, 'out', 'stills', 't0001.jpg')));
+  assert.ok(existsSync(path.join(d, 'out', 'stills', 't0001000-guides.jpg')));
+  assert.ok(!existsSync(path.join(d, 'out', 'stills', 't0001000.jpg')));
   const refused = cli('frames', project({ output: '4:5' }), '--at', '1', '--guides');
   assert.equal(refused.status, 1);
   assert.match(refused.stderr, /need the 9:16 output \(this project renders 4:5\)/);

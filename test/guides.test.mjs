@@ -65,8 +65,8 @@ test('a frame drawn with guides is tinted inside every zone and untouched everyw
 test('stills with guides are written next to the plain ones under another name, and a size without guides fails before anything renders', async () => {
   const d = prepare(BOAT), out = mkdtempSync(path.join(tmpdir(), 'ek-'));
   const [plain] = await stills(d, out, [14]), [guided] = await stills(d, out, [14], { guides: true });
-  assert.equal(path.basename(plain), 't0014.jpg');
-  assert.equal(path.basename(guided), 't0014-guides.jpg');
+  assert.equal(path.basename(plain), 't0014000.jpg');
+  assert.equal(path.basename(guided), 't0014000-guides.jpg');
   assert.ok(!readFileSync(plain).equals(readFileSync(guided)));
   await assert.rejects(() => stills(prepare(BOAT, { output: '1:1' }), out, [14], { guides: true }), /need the 9:16 output/);
   assert.ok(!existsSync(path.join(out, 't0014-guides-1x1.jpg')));
