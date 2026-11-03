@@ -54,7 +54,13 @@ export function mix(dir, { voice = null, total, words = null }) {
   for (const f of [...files, ...hits.map(h => h.path)]) if (!existsSync(f)) throw new Error(`mix.json: audio file not found: ${f}`);
   const inputs = [], graph = [], est = 'aresample=48000,aformat=channel_layouts=stereo';
   if (voice) inputs.push(voice); else inputs.push('anullsrc=r=48000:cl=stereo');
-  graph.push(voice ? `[0:a]${est},apad=pad_dur=${cfg.tail + 1},asplit=2[voice][vsc]` : `[0:a]${est},asplit=2[voice][vsc]`);
+  // The voice is split into a sidechain key ([vsc]) only when music will actually duck under it.
+  // A dead-end branch (asplit feeding anullsink with no mapped output) aborts the Linux static
+  // ffmpeg build CI uses — "Assertion best_input >= 0 failed at ffmpeg_filter.c" (SIGABRT, exit
+  // null) — so we emit only the pads that reach [out]. macOS/Windows builds tolerated it; Linux 7.x did not.
+  const useSidechain = music.length > 0 && !!voice;
+  const voiceChain = voice ? `[0:a]${est},apad=pad_dur=${cfg.tail + 1}` : `[0:a]${est}`;
+  graph.push(useSidechain ? `${voiceChain},asplit=2[voice][vsc]` : `${voiceChain}[voice]`);
   const parts = ['[voice]'];
   music.forEach((m, i) => {
     inputs.push(files[i]);
@@ -64,15 +70,18 @@ export function mix(dir, { voice = null, total, words = null }) {
   });
   if (music.length) {
     graph.push(`${music.map((_, i) => `[m${i}]`).join('')}amix=inputs=${music.length}:normalize=0,volume=${cfg.musicVolume}[mus]`);
-    if (voice) { graph.push('[mus][vsc]sidechaincompress=threshold=0.04:ratio=5:attack=20:release=400[musd]'); parts.push('[musd]'); }
-    else { graph.push('[vsc]anullsink'); parts.push('[mus]'); }
-  } else graph.push('[vsc]anullsink');
+    if (useSidechain) { graph.push('[mus][vsc]sidechaincompress=threshold=0.04:ratio=5:attack=20:release=400[musd]'); parts.push('[musd]'); }
+    else parts.push('[mus]');
+  }
   hits.forEach((h, i) => {
     inputs.push(h.path); const ms = Math.round(h.at * 1000);
     graph.push(`[${inputs.length - 1}:a]${est},adelay=${ms}|${ms}[h${i}]`);
   });
   if (hits.length) { graph.push(`${hits.map((_, i) => `[h${i}]`).join('')}amix=inputs=${hits.length}:normalize=0,volume=${cfg.hitVolume}[hits]`); parts.push('[hits]'); }
-  graph.push(`${parts.join('')}amix=inputs=${parts.length}:normalize=0,atrim=0:${seconds.toFixed(2)},loudnorm=I=${cfg.lufs}:TP=-1.5:LRA=11,aresample=48000[out]`);
+  // A single part needs no amix — amix=inputs=1 is the other shape that trips the same assertion.
+  const finChain = `atrim=0:${seconds.toFixed(2)},loudnorm=I=${cfg.lufs}:TP=-1.5:LRA=11,aresample=48000[out]`;
+  if (parts.length > 1) graph.push(`${parts.join('')}amix=inputs=${parts.length}:normalize=0,${finChain}`);
+  else graph.push(`${parts[0]}${finChain}`);
   const file = path.join(out, 'audio-final.m4a');
   const args = [];
   inputs.forEach((f, i) => { if (i === 0 && !voice) args.push('-f', 'lavfi', '-t', String(seconds), '-i', f); else args.push('-i', f); });

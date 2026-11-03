@@ -10,7 +10,11 @@ export const MODEL_REPO = 'https://huggingface.co/ggerganov/whisper.cpp';
 export const RECOMMENDED = { file: 'ggml-base.bin', bytes: 147951465 };
 export const modelUrl = file => `${MODEL_REPO}/resolve/main/${file}`;
 export const modelsFolder = (home = homedir()) => path.join(home, '.explainkit', 'models');
-export const expandHome = (p, home = homedir()) => p.replace(/^~(?=$|[\\/])/, home);
+// Expand a leading ~ to the home folder and return a path with native separators, so the
+// result is a real path on Windows too (a bare string replace would keep the forward slashes
+// from "~/models/m.bin" and never equal a path.join on win32).
+export const expandHome = (p, home = homedir()) =>
+  /^~(?=$|[\\/])/.test(p) ? path.normalize(p.replace(/^~/, home)) : p;
 
 // every whisper.cpp model starts with the "ggml" magic number, then eleven 32-bit header fields; the first is n_vocab
 const GGML_MAGIC = 0x67676d6c;
