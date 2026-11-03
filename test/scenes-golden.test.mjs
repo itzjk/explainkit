@@ -13,6 +13,13 @@ const UPDATE = !!process.env.UPDATE_GOLDEN;
 // Renders every built-in scene at p=0.5 with its canonical params and checks the SHA-256
 // of the raw pixel data against a stored hash. To accept intentional visual changes run:
 //   UPDATE_GOLDEN=1 node --test test/scenes-golden.test.mjs
+// The stored golden is a raw-pixel SHA, which is only reproducible within one OS: Chromium's
+// canvas anti-aliasing (thin alpha-blended strokes, arcs, gradients) rasterizes differently on
+// Linux, macOS and Windows, so the exact-match check runs only on the canonical platform (Linux,
+// the OS this project also renders the end-to-end example on). On macOS and Windows the test still
+// renders every scene and checks the portable invariants (each scene draws, scenes stay distinct,
+// no page errors). Regenerate the golden on Linux:  UPDATE_GOLDEN=1 node --test test/scenes-golden.test.mjs
+const CANONICAL = process.platform === 'linux';
 test('each built-in scene matches its golden frame (UPDATE_GOLDEN=1 to refresh)', async () => {
   const stored = JSON.parse(readFileSync(GOLDEN, 'utf8'));
   const layout = layoutFor('9:16');
@@ -74,7 +81,8 @@ test('each built-in scene matches its golden frame (UPDATE_GOLDEN=1 to refresh)'
         return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
       }, i * 2 + 1);
       fresh[name] = hash;
-      if (!UPDATE) {
+      assert.match(hash, /^[0-9a-f]{64}$/, `scene "${name}" did not render a frame`);
+      if (!UPDATE && CANONICAL) {
         assert.notEqual(
           stored[name],
           undefined,
@@ -87,6 +95,10 @@ test('each built-in scene matches its golden frame (UPDATE_GOLDEN=1 to refresh)'
         );
       }
     }
+    // Portable on every OS: no two scenes may collapse to the same frame (a scene that silently
+    // stops drawing would otherwise pass unnoticed where the exact hash is not checked).
+    const frames = Object.values(fresh);
+    assert.equal(new Set(frames).size, frames.length, 'two built-in scenes produced an identical frame');
     assert.deepEqual(st.errors, [], `page errors: ${st.errors.join('; ')}`);
   } finally {
     await st.close();
