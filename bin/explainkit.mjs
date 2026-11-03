@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, copyFileSync } from
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { prepare, loadConfig } from '../src/project.mjs';
-import { estimateWords, whisperWords, writeWords, scriptText } from '../src/align.mjs';
+import { estimateWords, whisperWords, writeWords, scriptText, readWords } from '../src/align.mjs';
 import { mix } from '../src/mix.mjs';
 import { narrate } from '../src/tts.mjs';
 import { writeCaptionFiles } from '../src/subtitles.mjs';
@@ -130,7 +130,15 @@ async function main() {
       return;
     }
     case 'render': case 'build': {
-      if (command === 'build') { await alignStep(dir, cfg()); }
+      if (command === 'build') {
+        const wordsFile = path.join(dir, 'out', 'words.json');
+        if (!v.engine && existsSync(wordsFile)) {
+          const words = readWords(wordsFile);
+          console.log(`${words.length} words, ${words.at(-1).end.toFixed(1)} s -> ${path.relative(process.cwd(), wordsFile)} (existing)`);
+        } else {
+          await alignStep(dir, cfg());
+        }
+      }
       const d = prepare(dir, overrides());
       console.log(`${d.shots.length} shots, ${d.caps.length} captions, ${d.fin.toFixed(1)} s (timings: ${d.source})`);
       const m = command === 'build' || !existsSync(path.join(out, 'audio-final.m4a')) ? mix(dir, { voice: d.cfg.audioFile, total: d.fin, words: d.words }) : { file: path.join(out, 'audio-final.m4a') };
