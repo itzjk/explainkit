@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveMixAnchors } from '../src/mix.mjs';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { mix, resolveMixAnchors } from '../src/mix.mjs';
+import { ffmpeg, run } from '../src/util.mjs';
 
 const words = [
   { text: 'Now',    start: 1.0, end: 1.3 },
@@ -56,4 +60,13 @@ test('empty words with no anchors returns cfg unchanged', () => {
   const out = resolveMixAnchors(cfg, []);
   assert.equal(out.hits[0].at, 5);
   assert.equal(out.music[0].from, 0);
+});
+
+test('the output sample rate is 48000 Hz even though loudnorm upsamples internally', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ek-mix-'));
+  const voiceFile = path.join(dir, 'voice.wav');
+  ffmpeg(['-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono', '-t', '2', voiceFile], 'test-voice');
+  const result = mix(dir, { voice: voiceFile, total: 2 });
+  const probe = run('ffprobe', ['-v', 'error', '-show_entries', 'stream=sample_rate', '-of', 'csv=p=0', result.file]).stdout.trim();
+  assert.equal(probe, '48000');
 });

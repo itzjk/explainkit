@@ -72,7 +72,7 @@ export function mix(dir, { voice = null, total, words = null }) {
     graph.push(`[${inputs.length - 1}:a]${est},adelay=${ms}|${ms}[h${i}]`);
   });
   if (hits.length) { graph.push(`${hits.map((_, i) => `[h${i}]`).join('')}amix=inputs=${hits.length}:normalize=0,volume=${cfg.hitVolume}[hits]`); parts.push('[hits]'); }
-  graph.push(`${parts.join('')}amix=inputs=${parts.length}:normalize=0,atrim=0:${seconds.toFixed(2)},loudnorm=I=${cfg.lufs}:TP=-1.5:LRA=11[out]`);
+  graph.push(`${parts.join('')}amix=inputs=${parts.length}:normalize=0,atrim=0:${seconds.toFixed(2)},loudnorm=I=${cfg.lufs}:TP=-1.5:LRA=11,aresample=48000[out]`);
   const file = path.join(out, 'audio-final.m4a');
   const args = [];
   inputs.forEach((f, i) => { if (i === 0 && !voice) args.push('-f', 'lavfi', '-t', String(seconds), '-i', f); else args.push('-i', f); });
