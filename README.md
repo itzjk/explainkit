@@ -37,7 +37,7 @@ npx explainkit frames my-video --at 2,10,25   # look at stills before rendering 
 npx explainkit build my-video                 # my-video/out/video.mp4
 ```
 
-## The three formats in `examples/`
+## The four formats in `examples/`
 
 Each one is a complete project (script, plan, custom scenes, mix) written from scratch for this repository. Copy one and change the story.
 
@@ -46,6 +46,7 @@ Each one is a complete project (script, plan, custom scenes, mix) written from s
 | [`examples/boat`](examples/boat) | "We build it, problem by problem": an object meets a problem, gets a fix, meets the next problem | One `tank` scene that draws five different situations from a parameter, and `card` scenes that number each PROBLEM and FIX |
 | [`examples/lighthouse`](examples/lighthouse) | A "DAY N" series in the second person, with rules, a clock and a heart-rate monitor, ending on a vote | A scene wrapper that stamps the day and the clock on every shot, the `pulse` monitor driven from the plan |
 | [`examples/endurance`](examples/endurance) | A real story told in silhouettes with the protagonist in every shot | Flat shapes, one color grade per shot, a `man()` silhouette that is reused in all scenes |
+| [`examples/myth`](examples/myth) | Myth-busting: state the claim, show the evidence, reveal the fact | A `claim` card that flips between MYTH (red) and FACT (green), a `tower` scene with a periodic lightning bolt and a strike counter, and a `pathmap` diagram that shows why the tallest target always wins |
 
 ## How it works
 
