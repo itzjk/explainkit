@@ -12,6 +12,7 @@ import { stills, sheet, video, gif } from '../src/render.mjs';
 import { gallery } from '../src/gallery.mjs';
 import { have, run, findOnPath } from '../src/util.mjs';
 import { whisperDoctor } from '../src/whisper-model.mjs';
+import { prosody } from '../src/prosody.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HELP = `explainkit: script + narration -> vertical 2D explainer video (1080x1920 by default, 30 fps), all on your machine.
@@ -25,6 +26,7 @@ const HELP = `explainkit: script + narration -> vertical 2D explainer video (108
   explainkit gif <dir> --from 2 --to 8      animated GIF of a section -> out/preview.gif
   explainkit srt <dir>                      the video's captions as files -> out/captions.srt and out/captions.vtt
   explainkit align <dir> [--engine estimate|whisper] [--model ggml.bin]   write out/words.json
+  explainkit prosody <dir> [--out file]     apply [slow]/[fast]/[low]/[high]/[quiet]/[loud] markers -> out/voice-prosody.wav
   explainkit mix <dir>                      write out/audio-final.m4a
   explainkit tts <dir> --engine kokoro|command [--voice af_heart] [--cmd "..."]   make narration.wav from the script
   explainkit tts <dir> --engine piper --voice voice.onnx [--piper-bin piper] [--piper-config voice.onnx.json]
@@ -103,6 +105,22 @@ async function main() {
   const cfg = () => loadConfig(dir, overrides());
   switch (command) {
     case 'align': return alignStep(dir, cfg());
+    case 'prosody': {
+      const c = cfg();
+      if (!c.audioFile) fail('prosody needs narration audio (project.json "audio" or --audio)');
+      const wordsFile = path.join(dir, 'out', 'words.json');
+      if (!existsSync(wordsFile)) fail('prosody needs out/words.json — run "explainkit align" first');
+      const words = readWords(wordsFile);
+      const scriptRaw = readFileSync(c.scriptFile, 'utf8');
+      const outFile = path.resolve(v.out || path.join(dir, 'out', 'voice-prosody.wav'));
+      const result = prosody(scriptRaw, words, c.audioFile, outFile);
+      if (!result.modified) {
+        console.log(`no prosody markers in ${path.relative(process.cwd(), c.scriptFile)} — ${path.relative(process.cwd(), outFile)} is a copy`);
+      } else {
+        console.log(`prosody: ${result.sentences} sentence(s) modified -> ${path.relative(process.cwd(), outFile)}`);
+      }
+      return;
+    }
     case 'mix': {
       const d = prepare(dir, overrides()); const r = mix(dir, { voice: d.cfg.audioFile, total: d.fin, words: d.words });
       return console.log(`audio ${r.seconds.toFixed(1)} s -> ${r.file}`);
