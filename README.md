@@ -120,6 +120,40 @@ npx explainkit frames my-video --at 5 --guides    # writes out/stills/t0005000-g
 
 **Where the numbers come from.** Meta's Ads Guide for Instagram Reels ads ("Awareness Image Ad Specs on Instagram Reels") says to leave roughly 14% of the top, 35% of the bottom and 6% on each side free from text (read on 2026-11-01). It gives percentages, so the pixels are computed from them. They are the bands for Reels ads, which carry ad copy and a call to action. **Not verified:** that organic Reels, TikTok or YouTube Shorts cover the same bands. TikTok publishes its In-Feed safe zone as template files without numbers, and no official pixel figures for Shorts were found. Check a test upload on the platform you publish to. The three percentages are one constant, `UI_ZONES` in `src/guides.mjs`, with its sources in the comment above it.
 
+## Per-sentence prosody
+
+A flat TTS take sounds the same from start to end. Add optional markers to your script to change the tempo, pitch, level or pause of individual sentences.
+
+```
+[slow] The glacier advanced one meter per year.    # ~15% slower (atempo 0.85)
+[fast] But the ocean was three degrees warmer.     # ~18% faster (atempo 1.18)
+[low] Something was about to give.                 # pitch –2 semitones
+[high] It happened in a single afternoon.          # pitch +2 semitones
+[quiet] They did not see it coming.                # –35% volume
+[loud] The whole shelf collapsed.                  # +50% volume
+```
+
+**Placement.** A marker applies to the sentence that contains it. Place it at the start of the sentence or anywhere inside it. A marker placed after a sentence-ending punctuation (`.!?`) applies to the *following* sentence, since the split happens at the punctuation.
+
+**Limits.** Pitch is capped at ±2 semitones (rate factors 0.891 and 1.122). Larger shifts make the voice sound like a different person. Tempo is 0.85–1.18× for `[slow]`/`[fast]`; atempo is stable up to 2× but audible artifacts increase above 1.33×.
+
+**Unknown markers are errors.** A `[tag]` that is not in the list above is rejected immediately with the name of the tag and the list of accepted ones. It is never silently dropped.
+
+**Multiple markers** can appear in one sentence: `[slow] [low] This is slow and low.`
+
+**Workflow.**
+
+```bash
+npx explainkit tts my-video --engine piper --voice voice.onnx    # make narration.wav
+npx explainkit align my-video                                     # write out/words.json
+npx explainkit prosody my-video                                   # apply markers -> out/voice-prosody.wav
+npx explainkit build my-video --audio out/voice-prosody.wav      # build with the processed voice
+```
+
+`prosody` reads `out/words.json` to find the time span of each sentence in the take (word tokens, not sentences, is what the aligner produces; the command groups them by sentence-ending punctuation first). It needs both the words file and the audio; run `align` before `prosody`. Pass `--out <file>` to write somewhere other than `out/voice-prosody.wav`.
+
+A script with no markers passes through unchanged — `prosody` copies the file and reports it.
+
 ## Commands
 
 ```
@@ -132,6 +166,7 @@ explainkit gif <dir> --from 2 --to 8      animated GIF of a section
 explainkit srt <dir>                      the captions as files: <dir>/out/captions.srt and captions.vtt
 explainkit render <dir> [--from --to]     render (or a section) from what is in out/
 explainkit align <dir> [--engine estimate|whisper] [--model ggml.bin]
+explainkit prosody <dir> [--out file]     apply prosody markers -> out/voice-prosody.wav
 explainkit mix <dir>
 explainkit tts <dir> --engine kokoro|piper|command [--voice af_heart|voice.onnx] [--cmd "..."] [--piper-bin piper]
 explainkit doctor
