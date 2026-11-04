@@ -1,0 +1,7 @@
+{
+  "script": "script.txt",
+  "audio": "narration.mp3",
+  "plan": "plan.js",
+  "scenes": [],
+  "language": "en"
+}

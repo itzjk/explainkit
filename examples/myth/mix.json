@@ -1,0 +1,8 @@
+{
+  "music": [{ "file": "synth:pad", "from": 0, "fadeOut": 4 }],
+  "hits": [
+    { "file": "synth:boom", "at": { "words": "It is wrong" } },
+    { "file": "synth:rise", "at": { "words": "Which myth" } }
+  ],
+  "musicVolume": 0.2
+}
